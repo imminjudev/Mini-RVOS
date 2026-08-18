@@ -4,13 +4,23 @@
 _start:
     la sp, stack_top
 
-    call kernel_main
+    la t0, __bss_start
+    la t1, __bss_end
 
 1:
-    wfi
+    bgeu t0, t1, 2f
+    sb zero, 0(t0)
+    addi t0, t0, 1
     j 1b
 
-.section .bss.stack
+2:
+    call kernel_main
+
+3:
+    wfi
+    j 3b
+
+.section .stack
 .align 12
 
 stack_bottom:
