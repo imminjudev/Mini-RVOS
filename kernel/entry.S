@@ -20,7 +20,7 @@ _start:
     wfi
     j 3b
 
-.section .stack
+.section .stack, "aw", @nobits
 .align 12
 
 stack_bottom:

@@ -9,7 +9,8 @@ BUILD = build
 OBJS = \
 	$(BUILD)/entry.o \
 	$(BUILD)/main.o \
-	$(BUILD)/uart.o
+	$(BUILD)/uart.o \
+	$(BUILD)/memory.o
 
 KERNEL = $(BUILD)/kernel.elf
 
@@ -27,12 +28,16 @@ $(BUILD)/main.o: kernel/main.c | $(BUILD)
 $(BUILD)/uart.o: kernel/uart.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/memory.o: kernel/memory.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(KERNEL): $(OBJS) linker.ld
 	$(LD) -T linker.ld $(OBJS) -o $@
 
 run: $(KERNEL)
 	qemu-system-riscv64 \
 		-machine virt \
+		-m 128M \
 		-nographic \
 		-bios default \
 		-kernel $(KERNEL)

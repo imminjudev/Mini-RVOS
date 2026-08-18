@@ -20,14 +20,15 @@ SECTIONS
 
     .bss : {
         __bss_start = .;
-
         *(.bss .bss.*)
         *(.sbss .sbss.*)
-
         __bss_end = .;
     }
 
     .stack : {
         *(.stack)
     }
+
+    . = ALIGN(4096);
+    __kernel_end = .;
 }
