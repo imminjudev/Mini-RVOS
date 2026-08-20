@@ -4,8 +4,11 @@
 #define PAGE_SIZE 4096UL
 
 void pmm_init(unsigned long memory_end);
+
 void *page_alloc(void);
 void page_free(void *ptr);
+
 unsigned long pmm_free_pages(void);
+unsigned long pmm_total_pages(void);
 
 #endif

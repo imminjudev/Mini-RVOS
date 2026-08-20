@@ -6,6 +6,7 @@ struct free_page {
 
 static struct free_page *free_list;
 static unsigned long free_page_count;
+static unsigned long total_page_count;
 
 extern char __kernel_end[];
 
@@ -26,10 +27,15 @@ void pmm_init(unsigned long memory_end)
 
     free_list = 0;
     free_page_count = 0;
+    total_page_count = 0;
 
-    for (unsigned long addr = start; addr + PAGE_SIZE <= end; addr += PAGE_SIZE) {
+    for (unsigned long addr = start;
+         addr + PAGE_SIZE <= end;
+         addr += PAGE_SIZE) {
         page_free((void *)addr);
     }
+
+    total_page_count = free_page_count;
 }
 
 void *page_alloc(void)
@@ -39,6 +45,7 @@ void *page_alloc(void)
     }
 
     struct free_page *page = free_list;
+
     free_list = page->next;
     free_page_count--;
 
@@ -51,10 +58,16 @@ void page_free(void *ptr)
 
     page->next = free_list;
     free_list = page;
+
     free_page_count++;
 }
 
 unsigned long pmm_free_pages(void)
 {
     return free_page_count;
+}
+
+unsigned long pmm_total_pages(void)
+{
+    return total_page_count;
 }
