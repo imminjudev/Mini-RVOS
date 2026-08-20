@@ -8,10 +8,12 @@ BUILD = build
 
 OBJS = \
 	$(BUILD)/entry.o \
+	$(BUILD)/trap_entry.o \
 	$(BUILD)/main.o \
 	$(BUILD)/uart.o \
 	$(BUILD)/memory.o \
-	$(BUILD)/vm.o
+	$(BUILD)/vm.o \
+	$(BUILD)/trap.o
 
 KERNEL = $(BUILD)/kernel.elf
 
@@ -21,6 +23,9 @@ $(BUILD):
 	mkdir -p $(BUILD)
 
 $(BUILD)/entry.o: kernel/entry.S | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/trap_entry.o: kernel/trap_entry.S | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/main.o: kernel/main.c | $(BUILD)
@@ -33,6 +38,9 @@ $(BUILD)/memory.o: kernel/memory.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/vm.o: kernel/vm.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/trap.o: kernel/trap.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(KERNEL): $(OBJS) linker.ld

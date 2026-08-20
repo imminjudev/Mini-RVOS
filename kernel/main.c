@@ -1,11 +1,14 @@
 #include "../include/memory.h"
 #include "../include/vm.h"
 #include "../include/riscv.h"
+#include "../include/trap.h"
 
 void uart_puts(const char *s);
 
 #define RAM_END 0x88000000UL
 #define UART0   0x10000000UL
+
+#define SCAUSE_STORE_PAGE_FAULT 15UL
 
 extern char __text_start[];
 extern char __text_end[];
@@ -17,6 +20,9 @@ extern char __data_start[];
 extern char __data_end[];
 
 extern char __kernel_end[];
+
+static const unsigned int protected_word
+    __attribute__((section(".rodata"))) = 0x12345678U;
 
 static int map_region(
     pagetable_t root,
@@ -117,6 +123,9 @@ void kernel_main(unsigned long hart_id, void *dtb)
 
     uart_puts("[OK] protected mappings ready\n");
 
+    trap_init();
+    uart_puts("[OK] trap vector ready\n");
+
     vm_enable(root);
 
     uart_puts("[OK] paging enabled\n");
@@ -125,7 +134,36 @@ void kernel_main(unsigned long hart_id, void *dtb)
         uart_puts("[OK] Sv39 active\n");
     } else {
         uart_puts("[FAIL] Sv39 activation\n");
+
+        for (;;) {
+        }
     }
+
+    trigger_store_page_fault(
+        (unsigned long)&protected_word
+    );
+
+    if (trap_get_last_cause() == SCAUSE_STORE_PAGE_FAULT) {
+        uart_puts("[OK] scause captured\n");
+    } else {
+        uart_puts("[FAIL] scause\n");
+    }
+
+    if (trap_get_last_value()
+        == (unsigned long)&protected_word) {
+        uart_puts("[OK] stval fault address\n");
+    } else {
+        uart_puts("[FAIL] stval\n");
+    }
+
+    if (*(volatile const unsigned int *)&protected_word
+        == 0x12345678U) {
+        uart_puts("[OK] rodata protection enforced\n");
+    } else {
+        uart_puts("[FAIL] rodata modified\n");
+    }
+
+    uart_puts("[OK] trap return\n");
 
     for (;;) {
     }
