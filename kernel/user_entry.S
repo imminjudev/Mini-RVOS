@@ -4,11 +4,16 @@
 .globl user_entry
 user_entry:
     /*
-     * write(
-     *     fd  = 1,
-     *     buf = user_message,
-     *     len = user_message_end - user_message
-     * )
+     * syscall 4 = getpid()
+     */
+    li a7, 4
+    ecall
+
+    li t0, 1
+    bne a0, t0, 1f
+
+    /*
+     * write(1, message, length)
      */
     li a0, 1
 
@@ -16,22 +21,15 @@ user_entry:
     la t0, user_message_end
     sub a2, t0, a1
 
-    /*
-     * write() 반환값 검증용으로
-     * 요청 길이를 s0에 보관.
-     */
     mv s0, a2
 
     li a7, 1
     ecall
 
-    /*
-     * a0 == write() 반환값
-     */
     bne a0, s0, 1f
 
     /*
-     * syscall 2 = 성공
+     * syscall 2 = success
      */
     li a7, 2
     ecall
@@ -41,7 +39,7 @@ user_entry:
 
 1:
     /*
-     * syscall 3 = 실패
+     * syscall 3 = failure
      */
     li a7, 3
     ecall
@@ -53,6 +51,6 @@ user_entry:
 .section .user.rodata, "a"
 
 user_message:
-    .ascii "Hello from U-mode via write syscall!\n"
+    .ascii "Hello from process 1!\n"
 
 user_message_end:

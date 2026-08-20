@@ -2,6 +2,7 @@
 #include "../include/riscv.h"
 #include "../include/sbi.h"
 #include "../include/scheduler.h"
+#include "../include/process.h"
 
 void uart_putc(char c);
 void uart_puts(const char *s);
@@ -15,6 +16,7 @@ void uart_puts(const char *s);
 #define SYS_WRITE                 1UL
 #define SYS_DONE                  2UL
 #define SYS_FAIL                  3UL
+#define SYS_GETPID                4UL
 
 #define TIMER_INTERVAL            10000000UL
 #define MAX_WRITE_LENGTH          256UL
@@ -42,13 +44,11 @@ static long sys_write(
         return -1;
     }
 
-    /*
-     * U=1 페이지를 S-mode에서 읽기 위해
-     * 잠시 SUM을 허용한다.
-     */
     riscv_enable_user_memory_access();
 
-    for (unsigned long i = 0; i < length; i++) {
+    for (unsigned long i = 0;
+         i < length;
+         i++) {
         uart_putc(buffer[i]);
     }
 
@@ -86,15 +86,14 @@ struct trap_frame *trap_handler(
 
     if (code == SCAUSE_USER_ECALL) {
         if (frame->sstatus & SSTATUS_SPP) {
-            uart_puts("[FAIL] syscall not from U-mode\n");
+            uart_puts(
+                "[FAIL] syscall not from U-mode\n"
+            );
 
             for (;;) {
             }
         }
 
-        /*
-         * ecall 다음 instruction으로 복귀.
-         */
         frame->sepc += 4;
 
         if (frame->a7 == SYS_WRITE) {
@@ -110,10 +109,19 @@ struct trap_frame *trap_handler(
             return frame;
         }
 
+        if (frame->a7 == SYS_GETPID) {
+            frame->a0 =
+                process_current_pid();
+
+            return frame;
+        }
+
         if (frame->a7 == SYS_DONE) {
-            uart_puts("[OK] write return value\n");
-            uart_puts("[OK] returned to U-mode after write\n");
-            uart_puts("[OK] user write syscall complete\n");
+            uart_puts("[OK] getpid syscall\n");
+            uart_puts("[OK] write syscall\n");
+            uart_puts(
+                "[OK] process syscall path\n"
+            );
 
             frame->a0 = 0;
 
@@ -121,7 +129,9 @@ struct trap_frame *trap_handler(
         }
 
         if (frame->a7 == SYS_FAIL) {
-            uart_puts("[FAIL] write return value\n");
+            uart_puts(
+                "[FAIL] process user test\n"
+            );
 
             for (;;) {
             }
@@ -134,7 +144,9 @@ struct trap_frame *trap_handler(
     }
 
     if (code == SCAUSE_STORE_PAGE_FAULT) {
-        uart_puts("[OK] store page fault caught\n");
+        uart_puts(
+            "[OK] store page fault caught\n"
+        );
 
         frame->sepc += 4;
 
