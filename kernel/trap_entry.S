@@ -3,13 +3,55 @@
 
 .globl trap_entry
 trap_entry:
+    /*
+     * S-mode trap:
+     *   sscratch == 0
+     *
+     * U-mode trap:
+     *   sscratch == kernel stack top
+     *
+     * Swap sp with sscratch first.
+     */
+    csrrw sp, sscratch, sp
+    bnez sp, 1f
+
+    /*
+     * Trap came from S-mode.
+     * Restore original supervisor sp.
+     */
+    csrrw sp, sscratch, sp
+
     addi sp, sp, -272
 
-    sd ra,   0(sp)
+    sd t0, 32(sp)
 
-    sd t0,  32(sp)
     addi t0, sp, 272
-    sd t0,   8(sp)
+    sd t0, 8(sp)
+
+    j 2f
+
+1:
+    /*
+     * Trap came from U-mode.
+     *
+     * sp       = kernel stack top
+     * sscratch = user sp
+     */
+    addi sp, sp, -272
+
+    sd t0, 32(sp)
+
+    csrr t0, sscratch
+    sd t0, 8(sp)
+
+    /*
+     * While executing the S-mode handler,
+     * mark sscratch as supervisor context.
+     */
+    csrw sscratch, zero
+
+2:
+    sd ra,   0(sp)
 
     sd gp,  16(sp)
     sd tp,  24(sp)
@@ -64,8 +106,7 @@ trap_resume:
 
 trap_restore:
     /*
-     * a0 = trap frame to restore.
-     * t6 is used temporarily as its pointer.
+     * a0 = frame to restore.
      */
     mv t6, a0
 
@@ -75,6 +116,24 @@ trap_restore:
     ld t0, 256(t6)
     csrw sstatus, t0
 
+    /*
+     * SPP == 0: returning to U-mode.
+     * Save kernel stack top in sscratch.
+     *
+     * SPP == 1: returning to S-mode.
+     * sscratch stays zero.
+     */
+    andi t0, t0, 0x100
+    bnez t0, 3f
+
+    addi t0, t6, 272
+    csrw sscratch, t0
+    j 4f
+
+3:
+    csrw sscratch, zero
+
+4:
     ld ra,   0(t6)
 
     ld gp,  16(t6)

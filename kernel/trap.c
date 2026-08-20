@@ -5,11 +5,16 @@
 
 void uart_puts(const char *s);
 
-#define SCAUSE_INTERRUPT        (1UL << 63)
-#define SCAUSE_SUPERVISOR_TIMER 5UL
-#define SCAUSE_STORE_PAGE_FAULT 15UL
+#define SCAUSE_INTERRUPT          (1UL << 63)
 
-#define TIMER_INTERVAL 10000000UL
+#define SCAUSE_USER_ECALL         8UL
+#define SCAUSE_SUPERVISOR_TIMER   5UL
+#define SCAUSE_STORE_PAGE_FAULT   15UL
+
+#define SYS_TEST                  1UL
+#define SYS_TEST_RETURN           2UL
+
+#define TIMER_INTERVAL            10000000UL
 
 extern void trap_entry(void);
 
@@ -42,6 +47,44 @@ struct trap_frame *trap_handler(
         }
 
         uart_puts("[FAIL] unexpected interrupt\n");
+
+        for (;;) {
+        }
+    }
+
+    if (code == SCAUSE_USER_ECALL) {
+        /*
+         * SPP == 0 means the trap originated
+         * from U-mode.
+         */
+        if (frame->sstatus & SSTATUS_SPP) {
+            uart_puts("[FAIL] ecall not from U-mode\n");
+
+            for (;;) {
+            }
+        }
+
+        frame->sepc += 4;
+
+        if (frame->a7 == SYS_TEST) {
+            uart_puts("[OK] trap from U-mode\n");
+            uart_puts("[OK] user ecall received\n");
+
+            frame->a0 = 0;
+
+            return frame;
+        }
+
+        if (frame->a7 == SYS_TEST_RETURN) {
+            uart_puts("[OK] returned to U-mode after syscall\n");
+            uart_puts("[OK] user mode syscall test complete\n");
+
+            frame->a0 = 0;
+
+            return frame;
+        }
+
+        uart_puts("[FAIL] unknown syscall\n");
 
         for (;;) {
         }

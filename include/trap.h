@@ -1,6 +1,8 @@
 #ifndef TRAP_H
 #define TRAP_H
 
+#define TRAP_FRAME_SIZE 272UL
+
 struct trap_frame {
     unsigned long ra;
     unsigned long sp;
