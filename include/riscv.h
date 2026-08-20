@@ -6,6 +6,7 @@
 #define SSTATUS_SIE  (1UL << 1)
 #define SSTATUS_SPIE (1UL << 5)
 #define SSTATUS_SPP  (1UL << 8)
+#define SSTATUS_SUM  (1UL << 18)
 
 #define SIE_STIE     (1UL << 5)
 
@@ -107,6 +108,26 @@ static inline void riscv_disable_timer_interrupt(void)
 static inline void riscv_wfi(void)
 {
     __asm__ volatile("wfi");
+}
+
+static inline void riscv_enable_user_memory_access(void)
+{
+    __asm__ volatile(
+        "csrs sstatus, %0"
+        ::
+        "r"(SSTATUS_SUM)
+        : "memory"
+    );
+}
+
+static inline void riscv_disable_user_memory_access(void)
+{
+    __asm__ volatile(
+        "csrc sstatus, %0"
+        ::
+        "r"(SSTATUS_SUM)
+        : "memory"
+    );
 }
 
 #endif

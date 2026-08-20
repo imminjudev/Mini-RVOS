@@ -3,6 +3,7 @@
 #include "../include/sbi.h"
 #include "../include/scheduler.h"
 
+void uart_putc(char c);
 void uart_puts(const char *s);
 
 #define SCAUSE_INTERRUPT          (1UL << 63)
@@ -11,10 +12,12 @@ void uart_puts(const char *s);
 #define SCAUSE_SUPERVISOR_TIMER   5UL
 #define SCAUSE_STORE_PAGE_FAULT   15UL
 
-#define SYS_TEST                  1UL
-#define SYS_TEST_RETURN           2UL
+#define SYS_WRITE                 1UL
+#define SYS_DONE                  2UL
+#define SYS_FAIL                  3UL
 
 #define TIMER_INTERVAL            10000000UL
+#define MAX_WRITE_LENGTH          256UL
 
 extern void trap_entry(void);
 
@@ -23,6 +26,35 @@ static volatile unsigned long timer_ticks;
 void trap_init(void)
 {
     riscv_write_stvec((unsigned long)trap_entry);
+}
+
+static long sys_write(
+    unsigned long fd,
+    const char *buffer,
+    unsigned long length)
+{
+    if (fd != 1) {
+        return -1;
+    }
+
+    if (buffer == 0 ||
+        length > MAX_WRITE_LENGTH) {
+        return -1;
+    }
+
+    /*
+     * U=1 페이지를 S-mode에서 읽기 위해
+     * 잠시 SUM을 허용한다.
+     */
+    riscv_enable_user_memory_access();
+
+    for (unsigned long i = 0; i < length; i++) {
+        uart_putc(buffer[i]);
+    }
+
+    riscv_disable_user_memory_access();
+
+    return (long)length;
 }
 
 struct trap_frame *trap_handler(
@@ -53,35 +85,46 @@ struct trap_frame *trap_handler(
     }
 
     if (code == SCAUSE_USER_ECALL) {
-        /*
-         * SPP == 0 means the trap originated
-         * from U-mode.
-         */
         if (frame->sstatus & SSTATUS_SPP) {
-            uart_puts("[FAIL] ecall not from U-mode\n");
+            uart_puts("[FAIL] syscall not from U-mode\n");
 
             for (;;) {
             }
         }
 
+        /*
+         * ecall 다음 instruction으로 복귀.
+         */
         frame->sepc += 4;
 
-        if (frame->a7 == SYS_TEST) {
-            uart_puts("[OK] trap from U-mode\n");
-            uart_puts("[OK] user ecall received\n");
+        if (frame->a7 == SYS_WRITE) {
+            long result = sys_write(
+                frame->a0,
+                (const char *)frame->a1,
+                frame->a2
+            );
+
+            frame->a0 =
+                (unsigned long)result;
+
+            return frame;
+        }
+
+        if (frame->a7 == SYS_DONE) {
+            uart_puts("[OK] write return value\n");
+            uart_puts("[OK] returned to U-mode after write\n");
+            uart_puts("[OK] user write syscall complete\n");
 
             frame->a0 = 0;
 
             return frame;
         }
 
-        if (frame->a7 == SYS_TEST_RETURN) {
-            uart_puts("[OK] returned to U-mode after syscall\n");
-            uart_puts("[OK] user mode syscall test complete\n");
+        if (frame->a7 == SYS_FAIL) {
+            uart_puts("[FAIL] write return value\n");
 
-            frame->a0 = 0;
-
-            return frame;
+            for (;;) {
+            }
         }
 
         uart_puts("[FAIL] unknown syscall\n");

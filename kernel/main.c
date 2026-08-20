@@ -25,6 +25,9 @@ extern char __data_end[];
 
 extern char __kernel_end[];
 
+extern char __user_rodata_start[];
+extern char __user_rodata_end[];
+
 static int map_region(
     pagetable_t root,
     unsigned long start,
@@ -98,6 +101,12 @@ void kernel_main(unsigned long hart_id, void *dtb)
             (unsigned long)__user_text_start,
             (unsigned long)__user_text_end,
             PTE_R | PTE_X | PTE_U | PTE_A) != 0 ||
+
+        map_region(
+            root,
+            (unsigned long)__user_rodata_start,
+            (unsigned long)__user_rodata_end,
+            PTE_R | PTE_U | PTE_A) != 0 ||
 
         map_region(
             root,

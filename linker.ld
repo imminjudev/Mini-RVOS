@@ -15,6 +15,7 @@ SECTIONS
     . = ALIGN(4096);
     __text_end = .;
 
+
     __user_text_start = .;
 
     .usertext : {
@@ -24,6 +25,17 @@ SECTIONS
     . = ALIGN(4096);
     __user_text_end = .;
 
+
+    __user_rodata_start = .;
+
+    .userrodata : {
+        KEEP(*(.user.rodata))
+    }
+
+    . = ALIGN(4096);
+    __user_rodata_end = .;
+
+
     __rodata_start = .;
 
     .rodata : {
@@ -32,6 +44,7 @@ SECTIONS
 
     . = ALIGN(4096);
     __rodata_end = .;
+
 
     __data_start = .;
 
