@@ -4,14 +4,25 @@ SECTIONS
 {
     . = 0x80200000;
 
+    . = ALIGN(4096);
+    __text_start = .;
+
     .text : {
         KEEP(*(.text.boot))
         *(.text .text.*)
     }
 
+    . = ALIGN(4096);
+    __text_end = .;
+    __rodata_start = .;
+
     .rodata : {
         *(.rodata .rodata.*)
     }
+
+    . = ALIGN(4096);
+    __rodata_end = .;
+    __data_start = .;
 
     .data : {
         *(.data .data.*)
@@ -20,8 +31,10 @@ SECTIONS
 
     .bss : {
         __bss_start = .;
+
         *(.bss .bss.*)
         *(.sbss .sbss.*)
+
         __bss_end = .;
     }
 
@@ -30,5 +43,6 @@ SECTIONS
     }
 
     . = ALIGN(4096);
+    __data_end = .;
     __kernel_end = .;
 }

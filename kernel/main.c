@@ -4,10 +4,38 @@
 
 void uart_puts(const char *s);
 
-#define RAM_START 0x80200000UL
-#define RAM_END   0x88000000UL
+#define RAM_END 0x88000000UL
+#define UART0   0x10000000UL
 
-#define UART0     0x10000000UL
+extern char __text_start[];
+extern char __text_end[];
+
+extern char __rodata_start[];
+extern char __rodata_end[];
+
+extern char __data_start[];
+extern char __data_end[];
+
+extern char __kernel_end[];
+
+static int map_region(
+    pagetable_t root,
+    unsigned long start,
+    unsigned long end,
+    unsigned long flags)
+{
+    if (end <= start) {
+        return 0;
+    }
+
+    return vm_map_range(
+        root,
+        start,
+        start,
+        end - start,
+        flags
+    );
+}
 
 void kernel_main(unsigned long hart_id, void *dtb)
 {
@@ -27,14 +55,49 @@ void kernel_main(unsigned long hart_id, void *dtb)
         }
     }
 
-    if (vm_map_range(
+    if (map_region(
             root,
-            RAM_START,
-            RAM_START,
-            RAM_END - RAM_START,
-            PTE_R | PTE_W | PTE_X | PTE_A | PTE_D) != 0) {
+            (unsigned long)__text_start,
+            (unsigned long)__text_end,
+            PTE_R | PTE_X | PTE_A) != 0) {
 
-        uart_puts("[FAIL] RAM identity map\n");
+        uart_puts("[FAIL] text mapping\n");
+
+        for (;;) {
+        }
+    }
+
+    if (map_region(
+            root,
+            (unsigned long)__rodata_start,
+            (unsigned long)__rodata_end,
+            PTE_R | PTE_A) != 0) {
+
+        uart_puts("[FAIL] rodata mapping\n");
+
+        for (;;) {
+        }
+    }
+
+    if (map_region(
+            root,
+            (unsigned long)__data_start,
+            (unsigned long)__data_end,
+            PTE_R | PTE_W | PTE_A | PTE_D) != 0) {
+
+        uart_puts("[FAIL] data mapping\n");
+
+        for (;;) {
+        }
+    }
+
+    if (map_region(
+            root,
+            (unsigned long)__kernel_end,
+            RAM_END,
+            PTE_R | PTE_W | PTE_A | PTE_D) != 0) {
+
+        uart_puts("[FAIL] free RAM mapping\n");
 
         for (;;) {
         }
@@ -52,7 +115,7 @@ void kernel_main(unsigned long hart_id, void *dtb)
         }
     }
 
-    uart_puts("[OK] identity map ready\n");
+    uart_puts("[OK] protected mappings ready\n");
 
     vm_enable(root);
 
