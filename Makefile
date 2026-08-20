@@ -13,7 +13,8 @@ OBJS = \
 	$(BUILD)/uart.o \
 	$(BUILD)/memory.o \
 	$(BUILD)/vm.o \
-	$(BUILD)/trap.o
+	$(BUILD)/trap.o \
+	$(BUILD)/sbi.o
 
 KERNEL = $(BUILD)/kernel.elf
 
@@ -41,6 +42,9 @@ $(BUILD)/vm.o: kernel/vm.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/trap.o: kernel/trap.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/sbi.o: kernel/sbi.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(KERNEL): $(OBJS) linker.ld
