@@ -1,9 +1,15 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-int scheduler_init(void);
-void scheduler_start(void);
+struct trap_frame;
 
-unsigned long scheduler_task_runs(unsigned long id);
+int scheduler_init(void);
+
+void scheduler_start(void)
+    __attribute__((noreturn));
+
+struct trap_frame *scheduler_on_timer(
+    struct trap_frame *frame
+);
 
 #endif

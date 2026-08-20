@@ -1,93 +1,52 @@
 #include "../include/scheduler.h"
 #include "../include/memory.h"
+#include "../include/trap.h"
+#include "../include/riscv.h"
 
 void uart_puts(const char *s);
 
 #define TASK_COUNT 2
-#define TARGET_RUNS 3
-
-struct context {
-    unsigned long ra;
-    unsigned long sp;
-
-    unsigned long s0;
-    unsigned long s1;
-    unsigned long s2;
-    unsigned long s3;
-    unsigned long s4;
-    unsigned long s5;
-    unsigned long s6;
-    unsigned long s7;
-    unsigned long s8;
-    unsigned long s9;
-    unsigned long s10;
-    unsigned long s11;
-};
+#define TEST_SWITCHES 6
 
 struct task {
-    struct context context;
+    struct trap_frame *frame;
     void *stack;
-    void (*entry)(void);
-    unsigned long runs;
+
+    volatile unsigned long work;
+    unsigned long slices;
 };
 
 static struct task tasks[TASK_COUNT];
-static struct context scheduler_context;
 
 static long current_task = -1;
+static unsigned long switch_count;
 
-extern void context_switch(
-    struct context *old_context,
-    struct context *new_context
-);
+static void clear_frame(struct trap_frame *frame)
+{
+    unsigned long *p = (unsigned long *)frame;
 
-static void task_yield(void);
+    for (unsigned long i = 0;
+         i < sizeof(*frame) / sizeof(unsigned long);
+         i++) {
+        p[i] = 0;
+    }
+}
 
 static void task_a(void)
 {
+    uart_puts("[task A started]\n");
+
     for (;;) {
-        uart_puts("[task A]\n");
-
-        tasks[current_task].runs++;
-
-        task_yield();
+        tasks[0].work++;
     }
 }
 
 static void task_b(void)
 {
-    for (;;) {
-        uart_puts("[task B]\n");
-
-        tasks[current_task].runs++;
-
-        task_yield();
-    }
-}
-
-static void task_bootstrap(void)
-{
-    if (current_task < 0 ||
-        current_task >= TASK_COUNT) {
-
-        for (;;) {
-        }
-    }
-
-    tasks[current_task].entry();
+    uart_puts("[task B started]\n");
 
     for (;;) {
-    }
-}
-
-static void clear_context(struct context *context)
-{
-    unsigned long *p = (unsigned long *)context;
-
-    for (unsigned long i = 0;
-         i < sizeof(*context) / sizeof(unsigned long);
-         i++) {
-        p[i] = 0;
+        tasks[1].work++;
     }
 }
 
@@ -101,24 +60,37 @@ static int task_create(
         return -1;
     }
 
-    clear_context(&tasks[id].context);
-
-    tasks[id].stack = stack;
-    tasks[id].entry = entry;
-    tasks[id].runs = 0;
-
-    tasks[id].context.ra =
-        (unsigned long)task_bootstrap;
-
-    tasks[id].context.sp =
+    unsigned long stack_top =
         (unsigned long)stack + PAGE_SIZE;
+
+    struct trap_frame *frame =
+        (struct trap_frame *)
+        (stack_top - sizeof(struct trap_frame));
+
+    clear_frame(frame);
+
+    frame->sp = stack_top;
+    frame->sepc = (unsigned long)entry;
+
+    /*
+     * Return into Supervisor mode.
+     * SPIE makes interrupts enabled after sret.
+     */
+    frame->sstatus =
+        SSTATUS_SPP | SSTATUS_SPIE;
+
+    tasks[id].frame = frame;
+    tasks[id].stack = stack;
+    tasks[id].work = 0;
+    tasks[id].slices = 0;
 
     return 0;
 }
 
 int scheduler_init(void)
 {
-    clear_context(&scheduler_context);
+    current_task = -1;
+    switch_count = 0;
 
     if (task_create(0, task_a) != 0) {
         return -1;
@@ -131,49 +103,58 @@ int scheduler_init(void)
     return 0;
 }
 
-static void task_yield(void)
+void scheduler_start(void)
 {
+    current_task = 0;
+
+    trap_resume(tasks[0].frame);
+
+    for (;;) {
+    }
+}
+
+struct trap_frame *scheduler_on_timer(
+    struct trap_frame *frame)
+{
+    if (current_task < 0 ||
+        current_task >= TASK_COUNT) {
+        return frame;
+    }
+
     long previous = current_task;
 
-    if (tasks[0].runs >= TARGET_RUNS &&
-        tasks[1].runs >= TARGET_RUNS) {
-
-        current_task = -1;
-
-        context_switch(
-            &tasks[previous].context,
-            &scheduler_context
-        );
-
-        return;
-    }
+    tasks[previous].frame = frame;
+    tasks[previous].slices++;
 
     long next =
         (previous + 1) % TASK_COUNT;
 
     current_task = next;
 
-    context_switch(
-        &tasks[previous].context,
-        &tasks[next].context
-    );
-}
+    switch_count++;
 
-void scheduler_start(void)
-{
-    current_task = 0;
-
-    context_switch(
-        &scheduler_context,
-        &tasks[0].context
-    );
-}
-
-unsigned long scheduler_task_runs(unsigned long id)
-{
-    if (id >= TASK_COUNT) {
-        return 0;
+    if (switch_count == 1) {
+        uart_puts("[OK] timer preemption active\n");
     }
 
-    return tasks[id].runs;
+    if (next == 0) {
+        uart_puts("[switch -> task A]\n");
+    } else {
+        uart_puts("[switch -> task B]\n");
+    }
+
+    if (switch_count == TEST_SWITCHES) {
+        if (tasks[0].work > 0 &&
+            tasks[1].work > 0) {
+
+            uart_puts("[OK] both tasks executed\n");
+            uart_puts("[OK] preemptive round robin\n");
+        } else {
+            uart_puts("[FAIL] task execution\n");
+        }
+
+        riscv_disable_timer_interrupt();
+    }
+
+    return tasks[next].frame;
 }
