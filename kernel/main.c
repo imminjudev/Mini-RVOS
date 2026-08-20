@@ -1,15 +1,12 @@
 #include "../include/memory.h"
 #include "../include/vm.h"
-#include "../include/riscv.h"
 #include "../include/trap.h"
-#include "../include/sbi.h"
+#include "../include/scheduler.h"
 
 void uart_puts(const char *s);
 
 #define RAM_END 0x88000000UL
 #define UART0   0x10000000UL
-
-#define TIMER_INTERVAL 10000000UL
 
 extern char __text_start[];
 extern char __text_end[];
@@ -99,25 +96,27 @@ void kernel_main(unsigned long hart_id, void *dtb)
     vm_enable(root);
 
     uart_puts("[OK] paging enabled\n");
-    uart_puts("[OK] trap vector ready\n");
 
-    riscv_enable_timer_interrupt();
+    if (scheduler_init() != 0) {
+        uart_puts("[FAIL] scheduler initialization\n");
 
-    sbi_set_timer(
-        riscv_read_time() + TIMER_INTERVAL
-    );
-
-    riscv_enable_interrupts();
-
-    uart_puts("[OK] timer armed\n");
-
-    while (trap_get_timer_ticks() < 3) {
-        riscv_wfi();
+        for (;;) {
+        }
     }
 
-    uart_puts("[OK] timer test complete\n");
+    uart_puts("[OK] scheduler initialized\n");
+
+    scheduler_start();
+
+    if (scheduler_task_runs(0) == 3 &&
+        scheduler_task_runs(1) == 3) {
+
+        uart_puts("[OK] context switching\n");
+        uart_puts("[OK] round robin scheduler\n");
+    } else {
+        uart_puts("[FAIL] scheduler execution\n");
+    }
 
     for (;;) {
-        riscv_wfi();
     }
 }
