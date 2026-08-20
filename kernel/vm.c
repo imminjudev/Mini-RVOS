@@ -1,7 +1,7 @@
 #include "../include/vm.h"
+#include "../include/riscv.h"
 
-#define PT_ENTRIES 512UL
-#define VPN_MASK   0x1FFUL
+#define VPN_MASK 0x1FFUL
 
 #define PA_TO_PTE(pa) (((unsigned long)(pa) >> 12) << 10)
 #define PTE_TO_PA(pte) (((unsigned long)(pte) >> 10) << 12)
@@ -31,9 +31,10 @@ pagetable_t vm_create(void)
     return root;
 }
 
-static pte_t *vm_walk(pagetable_t root,
-                      unsigned long va,
-                      int allocate)
+static pte_t *vm_walk(
+    pagetable_t root,
+    unsigned long va,
+    int allocate)
 {
     pagetable_t table = root;
 
@@ -67,10 +68,11 @@ static pte_t *vm_walk(pagetable_t root,
     return &table[VPN_INDEX(va, 0)];
 }
 
-int vm_map_page(pagetable_t root,
-                unsigned long va,
-                unsigned long pa,
-                unsigned long flags)
+int vm_map_page(
+    pagetable_t root,
+    unsigned long va,
+    unsigned long pa,
+    unsigned long flags)
 {
     if ((va & (PAGE_SIZE - 1)) != 0 ||
         (pa & (PAGE_SIZE - 1)) != 0) {
@@ -88,8 +90,38 @@ int vm_map_page(pagetable_t root,
     return 0;
 }
 
-unsigned long vm_translate(pagetable_t root,
-                           unsigned long va)
+int vm_map_range(
+    pagetable_t root,
+    unsigned long va,
+    unsigned long pa,
+    unsigned long size,
+    unsigned long flags)
+{
+    if ((va & (PAGE_SIZE - 1)) != 0 ||
+        (pa & (PAGE_SIZE - 1)) != 0 ||
+        (size & (PAGE_SIZE - 1)) != 0) {
+        return -1;
+    }
+
+    for (unsigned long offset = 0;
+         offset < size;
+         offset += PAGE_SIZE) {
+
+        if (vm_map_page(
+                root,
+                va + offset,
+                pa + offset,
+                flags) != 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+unsigned long vm_translate(
+    pagetable_t root,
+    unsigned long va)
 {
     pte_t *pte = vm_walk(root, va, 0);
 
@@ -102,4 +134,14 @@ unsigned long vm_translate(pagetable_t root,
     }
 
     return PTE_TO_PA(*pte) | (va & (PAGE_SIZE - 1));
+}
+
+void vm_enable(pagetable_t root)
+{
+    unsigned long satp =
+        SATP_MODE_SV39 | ((unsigned long)root >> 12);
+
+    riscv_sfence_vma();
+    riscv_write_satp(satp);
+    riscv_sfence_vma();
 }

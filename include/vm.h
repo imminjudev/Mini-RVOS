@@ -24,9 +24,19 @@ int vm_map_page(
     unsigned long flags
 );
 
+int vm_map_range(
+    pagetable_t root,
+    unsigned long va,
+    unsigned long pa,
+    unsigned long size,
+    unsigned long flags
+);
+
 unsigned long vm_translate(
     pagetable_t root,
     unsigned long va
 );
+
+void vm_enable(pagetable_t root);
 
 #endif
