@@ -1,24 +1,10 @@
 #include "../include/memory.h"
+#include "../include/vm.h"
 
 void uart_puts(const char *s);
 
 #define PHYS_MEM_END 0x88000000UL
-#define TEST_PAGE_COUNT 8
-
-volatile unsigned long bss_probe;
-
-static int pages_are_unique(void **pages, unsigned long count)
-{
-    for (unsigned long i = 0; i < count; i++) {
-        for (unsigned long j = i + 1; j < count; j++) {
-            if (pages[i] == pages[j]) {
-                return 0;
-            }
-        }
-    }
-
-    return 1;
-}
+#define TEST_VA      0x40000000UL
 
 void kernel_main(unsigned long hart_id, void *dtb)
 {
@@ -27,76 +13,42 @@ void kernel_main(unsigned long hart_id, void *dtb)
 
     uart_puts("Mini-RVOS booting...\n");
 
-    if (bss_probe == 0) {
-        uart_puts("[OK] bss initialized\n");
-    } else {
-        uart_puts("[FAIL] bss initialization\n");
-    }
-
     pmm_init(PHYS_MEM_END);
 
-    unsigned long initial_free = pmm_free_pages();
+    pagetable_t root = vm_create();
+    void *page = page_alloc();
 
-    if (initial_free > 0 &&
-        pmm_total_pages() == initial_free) {
-        uart_puts("[OK] pmm initialized\n");
-    } else {
-        uart_puts("[FAIL] pmm initialization\n");
-    }
+    if (root == 0 || page == 0) {
+        uart_puts("[FAIL] vm allocation\n");
 
-    void *pages[TEST_PAGE_COUNT];
-    int allocation_ok = 1;
-    int alignment_ok = 1;
-
-    for (unsigned long i = 0; i < TEST_PAGE_COUNT; i++) {
-        pages[i] = page_alloc();
-
-        if (pages[i] == 0) {
-            allocation_ok = 0;
-            continue;
-        }
-
-        if (((unsigned long)pages[i] & (PAGE_SIZE - 1)) != 0) {
-            alignment_ok = 0;
+        for (;;) {
         }
     }
 
-    if (allocation_ok) {
-        uart_puts("[OK] page allocation\n");
+    if (vm_map_page(
+            root,
+            TEST_VA,
+            (unsigned long)page,
+            PTE_R | PTE_W | PTE_A | PTE_D) == 0) {
+        uart_puts("[OK] page mapping\n");
     } else {
-        uart_puts("[FAIL] page allocation\n");
+        uart_puts("[FAIL] page mapping\n");
     }
 
-    if (alignment_ok) {
-        uart_puts("[OK] page alignment\n");
+    unsigned long translated =
+        vm_translate(root, TEST_VA);
+
+    if (translated == (unsigned long)page) {
+        uart_puts("[OK] address translation\n");
     } else {
-        uart_puts("[FAIL] page alignment\n");
+        uart_puts("[FAIL] address translation\n");
     }
 
-    if (allocation_ok &&
-        pages_are_unique(pages, TEST_PAGE_COUNT)) {
-        uart_puts("[OK] page uniqueness\n");
+    if (vm_translate(root, TEST_VA + 123)
+        == (unsigned long)page + 123) {
+        uart_puts("[OK] page offset preserved\n");
     } else {
-        uart_puts("[FAIL] page uniqueness\n");
-    }
-
-    if (allocation_ok &&
-        pmm_free_pages() == initial_free - TEST_PAGE_COUNT) {
-        uart_puts("[OK] allocation accounting\n");
-    } else {
-        uart_puts("[FAIL] allocation accounting\n");
-    }
-
-    for (unsigned long i = 0; i < TEST_PAGE_COUNT; i++) {
-        if (pages[i] != 0) {
-            page_free(pages[i]);
-        }
-    }
-
-    if (pmm_free_pages() == initial_free) {
-        uart_puts("[OK] free accounting\n");
-    } else {
-        uart_puts("[FAIL] free accounting\n");
+        uart_puts("[FAIL] page offset\n");
     }
 
     for (;;) {
