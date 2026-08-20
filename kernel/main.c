@@ -2,12 +2,16 @@
 #include "../include/trap.h"
 #include "../include/riscv.h"
 #include "../include/process.h"
+#include "../include/scheduler.h"
+#include "../include/sbi.h"
 
 void uart_puts(const char *s);
 
-#define RAM_END 0x88000000UL
+#define RAM_END        0x88000000UL
+#define TIMER_INTERVAL 10000000UL
 
-static struct process init_process;
+static struct process process_one;
+static struct process process_two;
 
 void kernel_main(
     unsigned long hart_id,
@@ -21,41 +25,72 @@ void kernel_main(
     pmm_init(RAM_END);
 
     /*
-     * process_create()는 user program template을
-     * 복사하므로 paging을 켜기 전에 실행.
+     * 아직 Bare mode일 때 두 user image를
+     * 각각 private physical pages로 복사.
      */
     if (process_create(
-            &init_process,
+            &process_one,
             1) != 0) {
 
         uart_puts(
-            "[FAIL] process creation\n"
+            "[FAIL] process 1 creation\n"
         );
 
         for (;;) {
         }
     }
 
-    uart_puts("[OK] process created\n");
+    if (process_create(
+            &process_two,
+            2) != 0) {
 
-    if (init_process.pid == 1) {
-        uart_puts("[OK] PID assigned\n");
+        uart_puts(
+            "[FAIL] process 2 creation\n"
+        );
+
+        for (;;) {
+        }
+    }
+
+    uart_puts("[OK] two processes created\n");
+
+    if (process_one.pid == 1 &&
+        process_two.pid == 2) {
+
+        uart_puts("[OK] PIDs assigned\n");
     } else {
-        uart_puts("[FAIL] PID\n");
+        uart_puts("[FAIL] PID assignment\n");
 
         for (;;) {
         }
     }
 
     if (process_has_private_user_memory(
-            &init_process)) {
+            &process_one) &&
+        process_has_private_user_memory(
+            &process_two) &&
+        process_address_spaces_distinct(
+            &process_one,
+            &process_two)) {
 
         uart_puts(
-            "[OK] private user address space\n"
+            "[OK] distinct process address spaces\n"
         );
     } else {
         uart_puts(
-            "[FAIL] private address space\n"
+            "[FAIL] process isolation\n"
+        );
+
+        for (;;) {
+        }
+    }
+
+    if (scheduler_init(
+            &process_one,
+            &process_two) != 0) {
+
+        uart_puts(
+            "[FAIL] process scheduler\n"
         );
 
         for (;;) {
@@ -64,13 +99,16 @@ void kernel_main(
 
     trap_init();
 
-    /*
-     * 이번 checkpoint에서는 scheduler를
-     * 아직 process와 연결하지 않는다.
-     */
-    riscv_disable_timer_interrupt();
+    riscv_enable_timer_interrupt();
 
-    uart_puts("[OK] entering process 1\n");
+    sbi_set_timer(
+        riscv_read_time() +
+        TIMER_INTERVAL
+    );
 
-    process_start(&init_process);
+    uart_puts(
+        "[OK] process scheduler ready\n"
+    );
+
+    scheduler_start();
 }

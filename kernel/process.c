@@ -179,6 +179,7 @@ int process_create(
     process->kernel_stack = 0;
     process->user_stack = 0;
     process->frame = 0;
+    process->syscall_complete = 0;
 
     pagetable_t root = vm_create();
 
@@ -190,9 +191,6 @@ int process_create(
         return -1;
     }
 
-    /*
-     * User text gets a new physical backing page.
-     */
     if (copy_user_region(
             root,
             (unsigned long)__user_text_start,
@@ -202,10 +200,6 @@ int process_create(
         return -1;
     }
 
-    /*
-     * User read-only data also gets
-     * private physical backing.
-     */
     if (copy_user_region(
             root,
             (unsigned long)__user_rodata_start,
@@ -251,10 +245,6 @@ int process_create(
     frame->sepc =
         (unsigned long)__user_text_start;
 
-    /*
-     * SPP = 0:
-     * trap_resume -> sret -> U-mode.
-     */
     frame->sstatus = 0;
 
     process->pagetable = root;
@@ -265,12 +255,18 @@ int process_create(
     return 0;
 }
 
-void process_start(
+void process_activate(
     struct process *process)
 {
     current_process = process;
 
     vm_enable(process->pagetable);
+}
+
+void process_start(
+    struct process *process)
+{
+    process_activate(process);
 
     trap_resume(process->frame);
 }
@@ -296,21 +292,73 @@ pagetable_t process_current_pagetable(void)
 int process_has_private_user_memory(
     struct process *process)
 {
-    unsigned long text_pa =
+    unsigned long pa =
         vm_translate(
             process->pagetable,
             (unsigned long)__user_text_start
         );
 
-    if (text_pa == 0) {
+    if (pa == 0) {
         return 0;
     }
 
-    /*
-     * 이전에는 VA == PA identity mapping.
-     * 이제 physical backing이 다르면
-     * process-private copy라는 뜻.
-     */
-    return text_pa !=
+    return pa !=
         (unsigned long)__user_text_start;
+}
+
+int process_address_spaces_distinct(
+    struct process *a,
+    struct process *b)
+{
+    if (a->pagetable == b->pagetable) {
+        return 0;
+    }
+
+    unsigned long a_text =
+        vm_translate(
+            a->pagetable,
+            (unsigned long)__user_text_start
+        );
+
+    unsigned long b_text =
+        vm_translate(
+            b->pagetable,
+            (unsigned long)__user_text_start
+        );
+
+    unsigned long a_stack =
+        vm_translate(
+            a->pagetable,
+            USER_STACK_BASE
+        );
+
+    unsigned long b_stack =
+        vm_translate(
+            b->pagetable,
+            USER_STACK_BASE
+        );
+
+    if (a_text == 0 ||
+        b_text == 0 ||
+        a_stack == 0 ||
+        b_stack == 0) {
+        return 0;
+    }
+
+    return
+        a_text != b_text &&
+        a_stack != b_stack;
+}
+
+void process_mark_syscall_complete(void)
+{
+    if (current_process != 0) {
+        current_process->syscall_complete = 1;
+    }
+}
+
+int process_syscall_complete(
+    struct process *process)
+{
+    return process->syscall_complete;
 }

@@ -117,8 +117,8 @@ struct trap_frame *trap_handler(
         }
 
         if (frame->a7 == SYS_DONE) {
-            uart_puts("[OK] getpid syscall\n");
-            uart_puts("[OK] write syscall\n");
+            process_mark_syscall_complete();
+
             uart_puts(
                 "[OK] process syscall path\n"
             );
