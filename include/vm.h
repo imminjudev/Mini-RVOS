@@ -37,6 +37,22 @@ unsigned long vm_translate(
     unsigned long va
 );
 
+/*
+ * 지정된 virtual address 범위가
+ *
+ * - 실제로 매핑되어 있고
+ * - PTE_U가 있으며
+ * - required_flags 권한을 가지고 있는지
+ *
+ * 검사한다.
+ */
+int vm_user_range_valid(
+    pagetable_t root,
+    unsigned long va,
+    unsigned long size,
+    unsigned long required_flags
+);
+
 void vm_enable(pagetable_t root);
 
 #endif

@@ -39,8 +39,17 @@ static const char cat_prefix[] USER_RODATA =
 static const char exit_command[] USER_RODATA =
     "exit";
 
+static const char memtest_command[] USER_RODATA =
+    "memtest";
+
+static const char memtest_ok[] USER_RODATA =
+    "[OK] user pointer validation\n";
+
+static const char memtest_fail[] USER_RODATA =
+    "[FAIL] user pointer validation\n";
+
 static const char help_text[] USER_RODATA =
-    "commands: help pid echo cat exit\n";
+    "commands: help pid echo cat exit memtest\n";
 
 static const char unknown_text[] USER_RODATA =
     "unknown command\n";
@@ -231,6 +240,62 @@ static USER_TEXT void write_text(
     );
 }
 
+static USER_TEXT void command_memtest(void)
+{
+    /*
+     * 1. 완전히 잘못된 주소.
+     *
+     * write(1, (char *)1, 1)
+     * -> kernel은 -1을 반환해야 한다.
+     */
+    long invalid_address =
+        user_syscall3(
+            SYS_WRITE,
+            1,
+            1,
+            1
+        );
+
+    /*
+     * 2. kernel 영역 주소.
+     *
+     * process page table에는 존재하지만
+     * PTE_U가 없으므로 거부되어야 한다.
+     */
+    long kernel_address =
+        user_syscall3(
+            SYS_WRITE,
+            1,
+            0x80200000UL,
+            1
+        );
+
+    /*
+     * 3. read()의 목적지를 read-only user page로 지정.
+     *
+     * banner는 user rodata이므로 PTE_W가 없다.
+     * UART 입력을 기다리지 않고 -1이어야 한다.
+     */
+    long readonly_buffer =
+        user_syscall3(
+            SYS_READ,
+            0,
+            (unsigned long)banner,
+            1
+        );
+
+    if (invalid_address == -1 &&
+        kernel_address == -1 &&
+        readonly_buffer == -1) {
+
+        write_text(memtest_ok);
+        return;
+    }
+
+    write_text(memtest_fail);
+}
+
+
 
 /*
  * pid command
@@ -282,6 +347,7 @@ static USER_TEXT void command_pid(void)
         position
     );
 }
+
 
 
 /*
@@ -400,6 +466,15 @@ USER_TEXT void user_shell_main(void)
             command_pid();
 
             continue;
+        }
+
+        if (string_equal(
+            command,
+            memtest_command)) {
+
+        command_memtest();
+
+        continue;
         }
 
 
