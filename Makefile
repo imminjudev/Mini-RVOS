@@ -1,3 +1,5 @@
+.RECIPEPREFIX := >
+
 CROSS = riscv64-unknown-elf-
 CC = $(CROSS)gcc
 LD = $(CROSS)ld
@@ -34,65 +36,68 @@ KERNEL = $(BUILD)/kernel.elf
 all: $(KERNEL)
 
 $(BUILD):
-	mkdir -p $(BUILD)
+>mkdir -p $(BUILD)
 
 $(BUILD)/entry.o: kernel/entry.S | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/trap_entry.o: kernel/trap_entry.S | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_entry.o: kernel/user_entry.S | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_shell.o: kernel/user_shell.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_syscall.o: kernel/user_syscall.S | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/main.o: kernel/main.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/uart.o: kernel/uart.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/memory.o: kernel/memory.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/vm.o: kernel/vm.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/trap.o: kernel/trap.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/syscall.o: kernel/syscall.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/sbi.o: kernel/sbi.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/scheduler.o: kernel/scheduler.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/process.o: kernel/process.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/fs.o: kernel/fs.c | $(BUILD)
-	$(CC) $(CFLAGS) -c $< -o $@
+>$(CC) $(CFLAGS) -c $< -o $@
 
 $(KERNEL): $(OBJS) linker.ld
-	$(LD) -T linker.ld $(OBJS) -o $@
+>$(LD) -T linker.ld $(OBJS) -o $@
 
 run: $(KERNEL)
-	qemu-system-riscv64 \
-		-machine virt \
-		-m 128M \
-		-nographic \
-		-bios default \
-		-kernel $(KERNEL)
+>qemu-system-riscv64 \
+>	-machine virt \
+>	-m 128M \
+>	-nographic \
+>	-bios default \
+>	-kernel $(KERNEL)
+
+test: $(KERNEL)
+>./tests/smoke.sh
 
 clean:
-	rm -rf $(BUILD)
+>rm -rf $(BUILD)
 
-.PHONY: all run clean
+.PHONY: all run test clean
