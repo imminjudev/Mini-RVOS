@@ -23,6 +23,7 @@ OBJS = \
 	$(BUILD)/memory.o \
 	$(BUILD)/vm.o \
 	$(BUILD)/trap.o \
+	$(BUILD)/syscall.o \
 	$(BUILD)/sbi.o \
 	$(BUILD)/scheduler.o \
 	$(BUILD)/process.o \
@@ -63,6 +64,9 @@ $(BUILD)/vm.o: kernel/vm.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/trap.o: kernel/trap.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/syscall.o: kernel/syscall.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/sbi.o: kernel/sbi.c | $(BUILD)

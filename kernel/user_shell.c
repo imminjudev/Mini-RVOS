@@ -1,14 +1,15 @@
+#include "../include/syscall.h"
+
 #define USER_TEXT \
     __attribute__((section(".user.text")))
 
 #define USER_RODATA \
     __attribute__((section(".user.rodata")))
 
-#define SYS_WRITE   1UL
-#define SYS_GETPID  4UL
-#define SYS_OPEN    5UL
-#define SYS_READ    6UL
-#define SYS_CLOSE   8UL
+
+/*
+ * Shell strings
+ */
 
 static const char banner[] USER_RODATA =
     "\nMini-RVOS shell\n"
@@ -35,8 +36,11 @@ static const char cat_command[] USER_RODATA =
 static const char cat_prefix[] USER_RODATA =
     "cat ";
 
+static const char exit_command[] USER_RODATA =
+    "exit";
+
 static const char help_text[] USER_RODATA =
-    "commands: help pid echo cat\n";
+    "commands: help pid echo cat exit\n";
 
 static const char unknown_text[] USER_RODATA =
     "unknown command\n";
@@ -51,12 +55,31 @@ static const char newline[] USER_RODATA =
     "\n";
 
 
+/*
+ * Assembly syscall entry.
+ *
+ * C:
+ *
+ * user_syscall3(
+ *     syscall_number,
+ *     arg0,
+ *     arg1,
+ *     arg2
+ * )
+ *
+ * user_syscall.S가 실제 ecall ABI로 변환한다.
+ */
 extern long user_syscall3(
     unsigned long number,
     unsigned long arg0,
     unsigned long arg1,
     unsigned long arg2
 );
+
+
+/*
+ * Minimal user-space string functions.
+ */
 
 static USER_TEXT unsigned long string_length(
     const char *s)
@@ -69,6 +92,7 @@ static USER_TEXT unsigned long string_length(
 
     return length;
 }
+
 
 static USER_TEXT int string_equal(
     const char *a,
@@ -88,6 +112,7 @@ static USER_TEXT int string_equal(
     return *a == *b;
 }
 
+
 static USER_TEXT int string_starts_with(
     const char *text,
     const char *prefix)
@@ -104,6 +129,11 @@ static USER_TEXT int string_starts_with(
     return 1;
 }
 
+
+/*
+ * User-space syscall wrappers.
+ */
+
 static USER_TEXT long user_write(
     int fd,
     const char *buffer,
@@ -116,6 +146,7 @@ static USER_TEXT long user_write(
         length
     );
 }
+
 
 static USER_TEXT long user_read(
     int fd,
@@ -130,6 +161,7 @@ static USER_TEXT long user_read(
     );
 }
 
+
 static USER_TEXT long user_open(
     const char *path)
 {
@@ -140,6 +172,7 @@ static USER_TEXT long user_open(
         0
     );
 }
+
 
 static USER_TEXT long user_close(
     int fd)
@@ -152,15 +185,41 @@ static USER_TEXT long user_close(
     );
 }
 
+
 static USER_TEXT unsigned long user_getpid(void)
 {
-    return (unsigned long)user_syscall3(
-        SYS_GETPID,
-        0,
+    return (unsigned long)
+        user_syscall3(
+            SYS_GETPID,
+            0,
+            0,
+            0
+        );
+}
+
+
+static USER_TEXT void user_exit(
+    unsigned long status)
+{
+    user_syscall3(
+        SYS_EXIT,
+        status,
         0,
         0
     );
+
+    /*
+     * SYS_EXIT은 kernel에서 돌아오지 않아야 한다.
+     * 혹시 돌아오더라도 실행을 계속하지 않는다.
+     */
+    for (;;) {
+    }
 }
+
+
+/*
+ * Simple stdout helper.
+ */
 
 static USER_TEXT void write_text(
     const char *text)
@@ -171,6 +230,11 @@ static USER_TEXT void write_text(
         string_length(text)
     );
 }
+
+
+/*
+ * pid command
+ */
 
 static USER_TEXT void command_pid(void)
 {
@@ -185,8 +249,12 @@ static USER_TEXT void command_pid(void)
         buffer[position++] = '0';
     } else {
         char reverse[20];
+
         unsigned long count = 0;
 
+        /*
+         * Decimal digits in reverse order.
+         */
         while (value > 0) {
             unsigned long digit =
                 value % 10;
@@ -197,6 +265,9 @@ static USER_TEXT void command_pid(void)
             value /= 10;
         }
 
+        /*
+         * Reverse them back.
+         */
         while (count > 0) {
             buffer[position++] =
                 reverse[--count];
@@ -211,6 +282,11 @@ static USER_TEXT void command_pid(void)
         position
     );
 }
+
+
+/*
+ * cat <path>
+ */
 
 static USER_TEXT void command_cat(
     const char *path)
@@ -257,6 +333,11 @@ static USER_TEXT void command_cat(
     user_close((int)fd);
 }
 
+
+/*
+ * User-space shell entry.
+ */
+
 USER_TEXT void user_shell_main(void)
 {
     char command[128];
@@ -266,6 +347,15 @@ USER_TEXT void user_shell_main(void)
     for (;;) {
         write_text(prompt);
 
+        /*
+         * stdin:
+         *
+         * read(
+         *     0,
+         *     command,
+         *     127
+         * )
+         */
         long length =
             user_read(
                 0,
@@ -277,36 +367,69 @@ USER_TEXT void user_shell_main(void)
             continue;
         }
 
+        /*
+         * Make input a C string.
+         */
         command[length] = '\0';
 
         if (length == 0) {
             continue;
         }
 
+
+        /*
+         * help
+         */
         if (string_equal(
                 command,
                 help_command)) {
 
             write_text(help_text);
+
             continue;
         }
 
+
+        /*
+         * pid
+         */
         if (string_equal(
                 command,
                 pid_command)) {
 
             command_pid();
+
             continue;
         }
 
+
+        /*
+         * exit
+         */
+        if (string_equal(
+                command,
+                exit_command)) {
+
+            user_exit(0);
+        }
+
+
+        /*
+         * echo
+         */
         if (string_equal(
                 command,
                 echo_command)) {
 
             write_text(newline);
+
             continue;
         }
 
+
+        /*
+         * echo <text>
+         */
         if (string_starts_with(
                 command,
                 echo_prefix)) {
@@ -317,17 +440,27 @@ USER_TEXT void user_shell_main(void)
             );
 
             write_text(newline);
+
             continue;
         }
 
+
+        /*
+         * cat without path.
+         */
         if (string_equal(
                 command,
                 cat_command)) {
 
             write_text(cat_usage);
+
             continue;
         }
 
+
+        /*
+         * cat <path>
+         */
         if (string_starts_with(
                 command,
                 cat_prefix)) {
@@ -340,6 +473,12 @@ USER_TEXT void user_shell_main(void)
             continue;
         }
 
-        write_text(unknown_text);
+
+        /*
+         * Unknown command.
+         */
+        write_text(
+            unknown_text
+        );
     }
 }
