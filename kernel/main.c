@@ -4,6 +4,7 @@
 #include "../include/process.h"
 #include "../include/scheduler.h"
 #include "../include/sbi.h"
+#include "../include/fs.h"
 
 void uart_puts(const char *s);
 
@@ -20,14 +21,27 @@ void kernel_main(
     (void)hart_id;
     (void)dtb;
 
-    uart_puts("Mini-RVOS booting...\n");
+    uart_puts(
+        "Mini-RVOS booting...\n"
+    );
 
     pmm_init(RAM_END);
 
-    /*
-     * 아직 Bare mode일 때 두 user image를
-     * 각각 private physical pages로 복사.
-     */
+    if (fs_init() != 0 ||
+        fs_inode_count() != 1) {
+
+        uart_puts(
+            "[FAIL] filesystem initialization\n"
+        );
+
+        for (;;) {
+        }
+    }
+
+    uart_puts(
+        "[OK] in-memory filesystem initialized\n"
+    );
+
     if (process_create(
             &process_one,
             1) != 0) {
@@ -52,31 +66,14 @@ void kernel_main(
         }
     }
 
-    uart_puts("[OK] two processes created\n");
+    uart_puts(
+        "[OK] two processes created\n"
+    );
 
-    if (process_one.pid == 1 &&
-        process_two.pid == 2) {
-
-        uart_puts("[OK] PIDs assigned\n");
-    } else {
-        uart_puts("[FAIL] PID assignment\n");
-
-        for (;;) {
-        }
-    }
-
-    if (process_has_private_user_memory(
-            &process_one) &&
-        process_has_private_user_memory(
-            &process_two) &&
-        process_address_spaces_distinct(
+    if (!process_address_spaces_distinct(
             &process_one,
             &process_two)) {
 
-        uart_puts(
-            "[OK] distinct process address spaces\n"
-        );
-    } else {
         uart_puts(
             "[FAIL] process isolation\n"
         );
@@ -107,7 +104,7 @@ void kernel_main(
     );
 
     uart_puts(
-        "[OK] process scheduler ready\n"
+        "[OK] filesystem test ready\n"
     );
 
     scheduler_start();

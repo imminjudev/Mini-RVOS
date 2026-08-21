@@ -4,45 +4,55 @@
 .globl user_entry
 user_entry:
     /*
-     * getpid()
+     * open("/hello.txt")
+     * syscall 5
      */
-    li a7, 4
+    la a0, file_path
+    li a7, 5
     ecall
 
-    li t0, 1
-    beq a0, t0, process_one
+    bltz a0, failed
 
-    li t0, 2
-    beq a0, t0, process_two
+    /*
+     * fd 보관
+     */
+    mv s1, a0
 
-    j failed
+    /*
+     * user stack에 128-byte read buffer 확보.
+     */
+    addi sp, sp, -128
 
+    /*
+     * read(fd, sp, 128)
+     * syscall 6
+     */
+    mv a0, s1
+    mv a1, sp
+    li a2, 128
+    li a7, 6
+    ecall
 
-process_one:
-    la a1, message_one
-    la t0, message_one_end
-    sub a2, t0, a1
-    j do_write
+    blez a0, failed
 
+    /*
+     * 읽은 byte 수 보관
+     */
+    mv s0, a0
 
-process_two:
-    la a1, message_two
-    la t0, message_two_end
-    sub a2, t0, a1
-
-
-do_write:
-    mv s0, a2
-
+    /*
+     * write(1, sp, bytes_read)
+     */
     li a0, 1
+    mv a1, sp
+    mv a2, s0
     li a7, 1
     ecall
 
     bne a0, s0, failed
 
     /*
-     * syscall 2:
-     * 이 process의 syscall 테스트 완료.
+     * syscall 2 = success
      */
     li a7, 2
     ecall
@@ -61,10 +71,5 @@ failed_loop:
 
 .section .user.rodata, "a"
 
-message_one:
-    .ascii "Hello from process 1!\n"
-message_one_end:
-
-message_two:
-    .ascii "Hello from process 2!\n"
-message_two_end:
+file_path:
+    .asciz "/hello.txt"

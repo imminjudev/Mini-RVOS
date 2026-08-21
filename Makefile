@@ -17,7 +17,8 @@ OBJS = \
 	$(BUILD)/trap.o \
 	$(BUILD)/sbi.o \
 	$(BUILD)/scheduler.o \
-	$(BUILD)/process.o
+	$(BUILD)/process.o \
+	$(BUILD)/fs.o
 
 KERNEL = $(BUILD)/kernel.elf
 
@@ -57,6 +58,9 @@ $(BUILD)/scheduler.o: kernel/scheduler.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/process.o: kernel/process.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/fs.o: kernel/fs.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(KERNEL): $(OBJS) linker.ld
