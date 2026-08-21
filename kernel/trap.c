@@ -20,6 +20,7 @@ void uart_puts(const char *s);
 #define SYS_GETPID                4UL
 #define SYS_OPEN                  5UL
 #define SYS_READ                  6UL
+#define SYS_CREATE                7UL
 
 #define TIMER_INTERVAL            10000000UL
 #define MAX_WRITE_LENGTH          256UL
@@ -41,10 +42,6 @@ static long sys_write(
     const char *buffer,
     unsigned long length)
 {
-    if (fd != 1) {
-        return -1;
-    }
-
     if (buffer == 0 ||
         length > MAX_WRITE_LENGTH) {
         return -1;
@@ -52,15 +49,29 @@ static long sys_write(
 
     riscv_enable_user_memory_access();
 
-    for (unsigned long i = 0;
-         i < length;
-         i++) {
-        uart_putc(buffer[i]);
+    long result;
+
+    if (fd == 1) {
+        for (unsigned long i = 0;
+             i < length;
+             i++) {
+
+            uart_putc(buffer[i]);
+        }
+
+        result = (long)length;
+    } else {
+        result = fs_write(
+            process_current_pid(),
+            (int)fd,
+            buffer,
+            length
+        );
     }
 
     riscv_disable_user_memory_access();
 
-    return (long)length;
+    return result;
 }
 
 static int copy_user_path(
@@ -100,6 +111,32 @@ static long sys_open(
     if (copy_user_path(
             user_path,
             path) != 0) {
+        return -1;
+    }
+
+    return fs_open(
+        process_current_pid(),
+        path
+    );
+}
+
+static long sys_create(
+    const char *user_path)
+{
+    char path[FS_NAME_MAX];
+
+    if (copy_user_path(
+            user_path,
+            path) != 0) {
+
+        return -1;
+    }
+
+    if (fs_create(
+            path,
+            0,
+            0) < 0) {
+
         return -1;
     }
 
@@ -201,6 +238,15 @@ struct trap_frame *trap_handler(
         if (frame->a7 == SYS_OPEN) {
             frame->a0 =
                 (unsigned long)sys_open(
+                    (const char *)frame->a0
+                );
+
+            return frame;
+        }
+
+        if (frame->a7 == SYS_CREATE) {
+            frame->a0 = 
+                (unsigned long)sys_create(
                     (const char *)frame->a0
                 );
 

@@ -26,6 +26,13 @@ long fs_read(
     unsigned long length
 );
 
+long fs_write(
+    unsigned long pid,
+    int fd,
+    const void *buffer,
+    unsigned long length
+);
+
 unsigned long fs_inode_count(void);
 
 #endif
