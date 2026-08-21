@@ -2,7 +2,13 @@ CROSS = riscv64-unknown-elf-
 CC = $(CROSS)gcc
 LD = $(CROSS)ld
 
-CFLAGS = -mcmodel=medany -ffreestanding -fno-pie
+CFLAGS = \
+	-mcmodel=medany \
+	-ffreestanding \
+	-fno-pie \
+	-fno-stack-protector \
+	-fno-builtin \
+	-msmall-data-limit=0
 
 BUILD = build
 
@@ -10,6 +16,8 @@ OBJS = \
 	$(BUILD)/entry.o \
 	$(BUILD)/trap_entry.o \
 	$(BUILD)/user_entry.o \
+	$(BUILD)/user_shell.o \
+	$(BUILD)/user_syscall.o \
 	$(BUILD)/main.o \
 	$(BUILD)/uart.o \
 	$(BUILD)/memory.o \
@@ -34,6 +42,12 @@ $(BUILD)/trap_entry.o: kernel/trap_entry.S | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_entry.o: kernel/user_entry.S | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/user_shell.o: kernel/user_shell.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/user_syscall.o: kernel/user_syscall.S | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/main.o: kernel/main.c | $(BUILD)

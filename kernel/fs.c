@@ -366,3 +366,23 @@ unsigned long fs_inode_count(void)
 {
     return inode_count;
 }
+
+int fs_close(
+    unsigned long pid,
+    int fd)
+{
+    struct open_file *file =
+        find_open_file(pid, fd);
+
+    if (file == 0) {
+        return -1;
+    }
+
+    file->used = 0;
+    file->pid = 0;
+    file->fd = 0;
+    file->inode_index = 0;
+    file->offset = 0;
+
+    return 0;
+}

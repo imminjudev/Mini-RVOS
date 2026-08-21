@@ -19,6 +19,11 @@ int fs_open(
     const char *name
 );
 
+int fs_close(
+    unsigned long pid,
+    int fd
+);
+
 long fs_read(
     unsigned long pid,
     int fd,

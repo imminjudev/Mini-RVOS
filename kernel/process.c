@@ -25,6 +25,8 @@ extern char __data_end[];
 
 extern char __kernel_end[];
 
+extern void user_entry(void);
+
 static struct process *current_process;
 
 static void page_zero(void *ptr)
@@ -243,7 +245,7 @@ int process_create(
     frame->sp = USER_STACK_TOP;
 
     frame->sepc =
-        (unsigned long)__user_text_start;
+        (unsigned long)user_entry;
 
     frame->sstatus = 0;
 
