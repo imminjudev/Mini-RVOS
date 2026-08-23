@@ -401,7 +401,7 @@ SPP가 S-mode를 나타내면 오류로 처리한다.
 `SUM`은 S-mode가 `PTE_U`가 설정된 user page에
 접근할 수 있는지 제어하는 bit다.
 
-Mini-RVOS syscall에서는 user pointer validation이 끝난 후:
+Mini-RVOS syscall code는 user page를 직접 접근하는 구간에서:
 
 ~~~text
 enable SUM
@@ -483,8 +483,8 @@ sstatus
 
 trap 처리 중 scheduler가 다른 process를 선택할 수도 있다.
 
-그렇다면 단순히 현재 register만 복원하는 것이 아니라
-다른 process의 저장된 context를 복원할 수 있어야 한다.
+scheduler는 현재 process의 trap frame을 저장하고
+선택한 process의 저장된 context를 복원한다.
 
 구조:
 
@@ -517,16 +517,17 @@ context switching의 기반이 된다.
 
 # 17. Trap Frame Size
 
-현재 Mini-RVOS에서는:
+trap entry assembly는 context 저장 영역으로:
 
 ~~~c
 #define TRAP_FRAME_SIZE 272UL
 ~~~
 
-을 사용한다.
+를 예약한다.
 
-assembly의 register offset과
-C structure layout이 정확히 일치해야 한다.
+`struct trap_frame`의 33개 `unsigned long` field는 264 bytes를 사용하고, assembly는 272 bytes를 예약한다.
+register와 CSR의 offset 0..256은 C structure field layout과 일치한다.
+예약 영역의 나머지 8 bytes를 포함해 trap handler 호출 시 stack pointer가 16-byte boundary에 유지된다.
 
 예:
 
@@ -806,8 +807,8 @@ frame->sepc += 4;
 
 일반적인 production OS의 page fault handler와는 다르다.
 
-현재 구현은 VM protection이 실제로 동작하는지 검증하기 위한
-단순한 처리 방식이다.
+현재 handler는 fault를 기록하고 instruction을 건너뛰며
+demand paging이나 process termination은 수행하지 않는다.
 
 ---
 
@@ -1191,8 +1192,8 @@ FS_NAME_MAX
 
 까지만 허용한다.
 
-이 방식은 user memory를 kernel internal string으로
-안전하게 복사하기 위한 간단한 `copy_from_user` 형태다.
+각 path byte는 validation 후 kernel-local buffer로
+복사된다.
 
 ---
 
@@ -1244,8 +1245,7 @@ wfi loop forever
 
 즉 process resource 회수나 scheduler removal은 하지 않는다.
 
-현재 interactive shell checkpoint를 종료하기 위한
-단순한 방식이다.
+현재 interactive shell에서는 이 동작으로 execution을 종료 상태에 둔다.
 
 ---
 
@@ -1547,7 +1547,7 @@ copy_string_from_user()
 
 # 51. Final Mental Model
 
-Mini-RVOS trap mechanism을 가장 간단히 표현하면:
+Mini-RVOS trap mechanism의 전체 동작은 다음과 같다:
 
 ~~~text
 "CPU execution을 안전하게 kernel로 넘기고,

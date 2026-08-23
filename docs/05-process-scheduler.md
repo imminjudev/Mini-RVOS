@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Mini-RVOS의 process는 단순한 PID 번호 하나가 아니다.
+Mini-RVOS의 process structure는 PID, page table, kernel stack, user stack, trap frame, syscall test state를 저장한다.
 
 각 process는 최소한 다음 실행 상태를 가진다.
 
@@ -125,9 +125,9 @@ Process B
     PID = 2
 ~~~
 
-하지만 PID는 process 자체가 아니다.
+process structure에는 PID와 함께 page table, stack, trap frame이 저장된다.
 
-PID는 단지 process를 구분하기 위한 identifier다.
+PID는 process를 구분하는 identifier다.
 
 실제 실행을 위해서는 page table,
 stack, CPU context 등이 필요하다.
@@ -427,25 +427,27 @@ PC = user_entry
 
 ---
 
-# 15. Important Entry-Point Design
+# 15. Process Entry Point
 
-과거에는 user text section의 시작 주소를
-process entry로 사용할 수 있다고 생각할 수 있다.
-
-하지만 section의 첫 함수가 반드시
-실제 entry function이라는 보장은 없다.
-
-compiler/linker가 다른 function을 앞에 배치할 수도 있다.
-
-따라서 Mini-RVOS는 명시적으로:
+현재 process의 초기 execution address는:
 
 ~~~text
 user_entry
 ~~~
 
-symbol을 사용한다.
+이다.
 
-이것이 section layout에 덜 의존하는 방식이다.
+`process_create()`는:
+
+~~~c
+frame->sepc =
+    (unsigned long)user_entry;
+~~~
+
+로 초기 PC를 설정한다.
+
+`user_entry`는 linker section의 시작 주소를 계산해서 사용하는 값이 아니라
+assembly에서 정의된 명시적인 symbol이다.
 
 ---
 
@@ -906,7 +908,7 @@ Process 2
 
 가 된다.
 
-이것이 가장 단순한 round-robin 형태다.
+현재 scheduler는 두 process를 번갈아 선택하는 round-robin 방식을 사용한다.
 
 ---
 
@@ -961,8 +963,8 @@ satp 변경
 
 을 수행한다.
 
-따라서 단순 register context뿐 아니라
-virtual memory context도 바뀐다.
+이 과정에서 register context와
+virtual memory context가 함께 바뀐다.
 
 ---
 
@@ -1283,9 +1285,41 @@ Current interactive shell configuration:
 
 ---
 
+# 46.1 Scheduler Test Stop Condition
+
+현재 scheduler test configuration에는:
+
+~~~c
+#define TEST_SWITCHES 6
+~~~
+
+이 정의되어 있다.
+
+여섯 번째 context switch에서 두 process의 `syscall_complete` 값을 검사한다.
+
+두 process가 모두 syscall을 실행했으면 다음 message를 출력한다.
+
+~~~text
+[OK] both processes executed
+[OK] address space switching
+[OK] process round robin
+~~~
+
+그 후:
+
+~~~c
+riscv_disable_timer_interrupt();
+~~~
+
+를 실행한다.
+
+이 동작은 현재 scheduler test path의 종료 조건이다.
+
+---
+
 # 47. Current Scheduler Limitations
 
-현재 scheduler는 실제 범용 OS scheduler보다 단순하다.
+현재 scheduler는 두 개의 process pointer를 고정 배열에 저장하고 timer interrupt마다 다음 process를 선택한다.
 
 ## Fixed Process Count
 
@@ -1367,7 +1401,7 @@ round-robin 구조는 존재하지만
 
 # 48. Current Process Limitations
 
-process subsystem 역시 단순하다.
+현재 process subsystem은 kernel image에 포함된 user code를 private physical page로 복사해 process address space를 구성한다.
 
 ## No ELF Loader
 
@@ -1404,10 +1438,10 @@ file descriptors
 
 ---
 
-# 49. Why This Design Is Still Useful
+# 49. Subsystem Relationships
 
-현재 구조가 단순하더라도
-핵심 OS mechanism은 직접 드러난다.
+현재 process와 scheduler는
+PMM, Sv39 VM, trap frame, timer interrupt를 함께 사용한다.
 
 ~~~text
 process object
@@ -1499,7 +1533,7 @@ scheduler도:
 
 # 52. Scheduler Mental Model
 
-scheduler를 가장 간단하게 표현하면:
+현재 scheduler의 context-switch path는 다음과 같다:
 
 ~~~text
 "현재 process의 context를 저장하고,

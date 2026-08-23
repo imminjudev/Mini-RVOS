@@ -138,7 +138,7 @@ Mini-RVOS의 목표는 기능 수를 계속 늘리는 것이 아니다.
 
 완료 기준:
 
-- process가 단순히 PID 하나가 아닌 이유를 설명할 수 있다.
+- process structure에 PID 외에 어떤 execution state가 저장되는지 설명할 수 있다.
 - 두 process의 virtual address가 같아도 physical memory가 다를 수 있는 이유를 설명할 수 있다.
 - timer interrupt가 preemptive scheduling으로 연결되는 과정을 설명할 수 있다.
 - context switch에서 어떤 CPU 상태를 보존해야 하는지 설명할 수 있다.
@@ -182,9 +182,9 @@ Mini-RVOS의 목표는 기능 수를 계속 늘리는 것이 아니다.
 - 측정 결과를 machine-readable format으로 저장할 수 있다.
 - 현재 구현의 한계를 문서화했다.
 
-VirtIO, ELF loader, network, fork, pipe 등을 단순히 기능 수를 늘리기 위해 추가하지 않는다.
+VirtIO, ELF loader, network, fork, pipe 등은 연구 질문에 필요한 경우에 추가한다.
 
-연구 질문에 필요할 경우에만 구현한다.
+
 
 ---
 
@@ -280,7 +280,7 @@ workload 후보:
 
 ## Analysis
 
-결과 분석에서는 단순히 "빠르다/느리다"로 끝내지 않는다.
+결과 분석에서는 성능 차이와 함께 원인, trade-off, implementation overhead를 분석한다.
 
 확인할 내용:
 
@@ -320,7 +320,7 @@ Abstract
 11. Conclusion
 ~~~
 
-Mini-RVOS의 최종 목표는 단순히 작은 OS를 구현하는 것이 아니라,
+Mini-RVOS의 최종 목표는 다음과 같다.
 
 > 직접 구현한 RISC-V operating system을 이해하고,
 > 그 시스템을 이용해 하나의 검증 가능한 연구 질문에 답하는 것

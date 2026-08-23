@@ -118,7 +118,7 @@ SECTIONS
     . = 0x80200000;
 ~~~
 
-즉 Mini-RVOS kernel의 entry point는 `0x80200000` 부근에 배치된다.
+현재 linker layout에서 `_start`는 `0x80200000`에 배치된다.
 
 OpenSBI firmware는 그보다 아래쪽 RAM 영역에서 실행되므로,
 Mini-RVOS kernel image와 OpenSBI가 겹치지 않는다.
@@ -356,9 +356,8 @@ kernel_main
 
 # 13. Linker Script as a Memory Layout Contract
 
-Mini-RVOS에서 linker script는 단순히 object file을 합치는 역할만 하지 않는다.
+Mini-RVOS에서 linker script는 object file의 배치와 kernel/user memory layout을 결정한다.
 
-kernel과 user 영역의 실제 memory layout을 결정한다.
 
 현재 주요 영역은 다음과 같다.
 
@@ -441,7 +440,7 @@ kernel ELF image
        U-mode address space
 ~~~
 
-이 방식은 구현이 단순하지만,
+현재 구현에는 ELF loader가 없으며,
 일반적인 OS처럼 arbitrary ELF application을 실행할 수는 없다.
 
 ---
@@ -545,7 +544,7 @@ kernel이 해당 환경을 미리 알고 있다고 가정한다.
 
 장점:
 
-- 구현이 단순하다.
+- Device Tree parsing 없이 고정된 hardware configuration을 사용한다.
 
 단점:
 

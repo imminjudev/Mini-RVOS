@@ -1537,7 +1537,7 @@ syscall에서 user-controlled pointer를 검사할 수 있다.
 
 # 53. Current Limitations
 
-현재 VM implementation은 실제 범용 OS보다 단순하다.
+현재 VM implementation은 4 KiB page mapping과 per-process Sv39 page table을 지원한다.
 
 ## 53.1 No Unmap
 
@@ -1598,7 +1598,7 @@ swap system이 없다.
 현재 Mini-RVOS에서는 별도의 ASID management를 하지 않는다.
 
 따라서 address-space switching에서
-단순한 TLB flush 방식을 사용한다.
+address-space switching마다 `sfence.vma`를 실행한다.
 
 ---
 
@@ -1695,7 +1695,7 @@ PA = 0x81000123
 
 # 56. Final Mental Model
 
-Mini-RVOS virtual memory를 가장 간단하게 표현하면:
+Mini-RVOS virtual memory의 전체 구조는 다음과 같다:
 
 ~~~text
 "각 process에게 자신만의 virtual address space를 제공하고,

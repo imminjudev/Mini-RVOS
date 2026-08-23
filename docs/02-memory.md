@@ -4,7 +4,7 @@
 
 Mini-RVOS는 physical memory를 4 KiB 단위의 page로 관리한다.
 
-현재 Physical Memory Manager(PMM)의 역할은 단순하다.
+현재 Physical Memory Manager(PMM)는 사용 가능한 physical page를 free-list로 관리한다.
 
 ~~~text
 usable physical memory
@@ -122,7 +122,7 @@ kernel data page
 ~~~
 
 이런 구조를 모두 같은 4 KiB 단위로 관리하면
-physical memory management가 단순해진다.
+physical memory allocation 단위를 4 KiB page로 통일할 수 있다.
 
 Mini-RVOS에서는:
 
@@ -207,7 +207,7 @@ physical page
 page가 free 상태이므로
 그 안의 내용을 보존할 필요가 없다.
 
-따라서 page의 첫 8 bytes 정도를
+따라서 page의 첫 8 bytes를
 다음 free page를 가리키는 pointer로 사용할 수 있다.
 
 이런 형태를 intrusive free list라고 볼 수 있다.
@@ -215,7 +215,7 @@ page가 free 상태이므로
 장점:
 
 - 별도 metadata memory가 거의 필요 없다.
-- 구현이 매우 단순하다.
+- free-list 삽입과 제거는 pointer 갱신으로 수행된다.
 - allocation/free가 빠르다.
 
 ---
@@ -806,7 +806,7 @@ create process
 현재 `page_alloc()`은 자신이 반환하는 page가
 어디에 사용될지 알지 못한다.
 
-PMM 입장에서는 모두 단순한 4 KiB physical page다.
+PMM은 모든 allocation을 4 KiB physical page 단위로 처리한다.
 
 예:
 
@@ -893,7 +893,7 @@ allocator 상태 변화를 이해하기 쉽다.
 
 # 24. Current Limitations
 
-현재 PMM은 의도적으로 단순하다.
+현재 PMM은 4 KiB fixed-size page와 singly linked free-list를 사용한다.
 
 다음 기능은 없다.
 
@@ -981,8 +981,8 @@ Linux 같은 실제 OS에서는 더 복잡한 physical memory allocator를 사�
 예를 들어 buddy allocator는
 여러 크기의 연속 page allocation을 효율적으로 관리할 수 있다.
 
-Mini-RVOS에서는 그런 복잡성이 현재 목적에 필요하지 않기 때문에
-단순 free-list를 사용한다.
+Mini-RVOS의 현재 PMM은 buddy allocator 대신
+singly linked free-list를 사용한다.
 
 ---
 
@@ -1070,7 +1070,7 @@ free_list
 
 # 27. Final Mental Model
 
-Mini-RVOS physical memory manager를 가장 간단하게 표현하면:
+Mini-RVOS physical memory manager의 전체 구조는 다음과 같다:
 
 ~~~text
 "kernel이 사용하지 않는 RAM을
