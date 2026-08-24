@@ -60,12 +60,25 @@ struct trap_frame *scheduler_on_timer(
     current_index = next_index;
     switch_count++;
 
-    /*
-     * 핵심:
-     * 여기서 satp까지 다음 process의
-     * page table로 교체된다.
-     */
     process_activate(next);
+
+#ifdef BENCHMARK_MODE
+
+    if (switch_count == 1) {
+        uart_puts(
+            "[OK] benchmark preemption active\n"
+        );
+    }
+
+    if (switch_count == TEST_SWITCHES) {
+        uart_puts(
+            "[OK] benchmark two-process switching\n"
+        );
+
+        riscv_disable_timer_interrupt();
+    }
+
+#else
 
     if (switch_count == 1) {
         uart_puts(
@@ -106,6 +119,8 @@ struct trap_frame *scheduler_on_timer(
 
         riscv_disable_timer_interrupt();
     }
+
+#endif
 
     return next->frame;
 }

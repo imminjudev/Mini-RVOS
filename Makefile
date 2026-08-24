@@ -13,13 +13,26 @@ CFLAGS = \
 	-msmall-data-limit=0
 
 BUILD = build
+BENCHMARK_MODE ?= 0
+
+ifeq ($(BENCHMARK_MODE),1)
+CFLAGS += -DBENCHMARK_MODE
+endif
+
+USER_OBJS = \
+	$(BUILD)/user_entry.o \
+	$(BUILD)/user_syscall.o
+
+ifeq ($(BENCHMARK_MODE),1)
+USER_OBJS += $(BUILD)/user_benchmark.o
+else
+USER_OBJS += $(BUILD)/user_shell.o
+endif
 
 OBJS = \
 	$(BUILD)/entry.o \
 	$(BUILD)/trap_entry.o \
-	$(BUILD)/user_entry.o \
-	$(BUILD)/user_shell.o \
-	$(BUILD)/user_syscall.o \
+	$(USER_OBJS) \
 	$(BUILD)/main.o \
 	$(BUILD)/uart.o \
 	$(BUILD)/memory.o \
@@ -48,6 +61,9 @@ $(BUILD)/user_entry.o: kernel/user_entry.S | $(BUILD)
 >$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_shell.o: kernel/user_shell.c | $(BUILD)
+>$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/user_benchmark.o: kernel/user_benchmark.c | $(BUILD)
 >$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_syscall.o: kernel/user_syscall.S | $(BUILD)
@@ -97,7 +113,13 @@ run: $(KERNEL)
 test: $(KERNEL)
 >./tests/smoke.sh
 
-clean:
->rm -rf $(BUILD)
+benchmark:
+>$(MAKE) BUILD=build-benchmark BENCHMARK_MODE=1 all
 
-.PHONY: all run test clean
+run-benchmark:
+>$(MAKE) BUILD=build-benchmark BENCHMARK_MODE=1 run
+
+clean:
+>rm -rf build build-benchmark
+
+.PHONY: all run test benchmark run-benchmark clean
