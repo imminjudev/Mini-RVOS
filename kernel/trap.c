@@ -5,13 +5,21 @@
 #include "../include/syscall.h"
 #include "../include/uart.h"
 
+#ifdef BENCHMARK_MODE
+#include "../include/benchmark.h"
+#endif
+
 #define SCAUSE_INTERRUPT          (1UL << 63)
 
 #define SCAUSE_SUPERVISOR_TIMER   5UL
 #define SCAUSE_USER_ECALL         8UL
 #define SCAUSE_STORE_PAGE_FAULT   15UL
 
-#define TIMER_INTERVAL            10000000UL
+#ifdef BENCHMARK_MODE
+#define TIMER_INTERVAL BENCHMARK_QUANTUM_TICKS
+#else
+#define TIMER_INTERVAL 10000000UL
+#endif
 
 extern void trap_entry(void);
 

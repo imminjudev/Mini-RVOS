@@ -8,13 +8,12 @@
 #ifdef BENCHMARK_MODE
 #include "../include/scheduler.h"
 #include "../include/sbi.h"
+#include "../include/benchmark.h"
 #endif
 
 #define RAM_END 0x88000000UL
 
 #ifdef BENCHMARK_MODE
-
-#define BENCHMARK_TIMER_INTERVAL 10000000UL
 
 static struct process benchmark_process_1;
 static struct process benchmark_process_2;
@@ -88,7 +87,7 @@ void kernel_main(
 
     sbi_set_timer(
         riscv_read_time() +
-        BENCHMARK_TIMER_INTERVAL
+        BENCHMARK_QUANTUM_TICKS
     );
 
     riscv_enable_timer_interrupt();

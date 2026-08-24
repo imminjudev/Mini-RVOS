@@ -1,0 +1,16 @@
+#ifndef BENCHMARK_H
+#define BENCHMARK_H
+
+#ifdef BENCHMARK_MODE
+
+#ifndef BENCHMARK_QUANTUM_TICKS
+#define BENCHMARK_QUANTUM_TICKS 100000UL
+#endif
+
+#ifndef BENCHMARK_SWITCHES
+#define BENCHMARK_SWITCHES 100UL
+#endif
+
+#endif
+
+#endif

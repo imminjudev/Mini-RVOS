@@ -4,6 +4,7 @@
 
 #ifdef BENCHMARK_MODE
 #include "../include/research.h"
+#include "../include/benchmark.h"
 #endif
 
 void uart_puts(const char *s);
@@ -38,7 +39,25 @@ void scheduler_start(void)
 {
     current_index = 0;
 
+#ifdef BENCHMARK_MODE
+
+    /*
+     * Initial address-space activation is not part of the
+     * measured context-switch sequence.
+     */
+    process_activate(processes[0]);
+
+    research_reset();
+
+    trap_resume(
+        processes[0]->frame
+    );
+
+#else
+
     process_start(processes[0]);
+
+#endif
 }
 
 struct trap_frame *scheduler_on_timer(
@@ -48,21 +67,6 @@ struct trap_frame *scheduler_on_timer(
         current_index >= PROCESS_COUNT) {
         return frame;
     }
-
-#ifdef BENCHMARK_MODE
-
-    if (switch_count == 0) {
-        /*
-         * process_start()에서 발생한 초기
-         * address-space activation 측정값을 제거한다.
-         *
-         * 첫 timer-driven context switch부터
-         * benchmark counter를 기록한다.
-         */
-        research_reset();
-    }
-
-#endif
 
     struct process *previous =
         processes[current_index];
@@ -95,9 +99,11 @@ struct trap_frame *scheduler_on_timer(
         );
     }
 
-    if (switch_count == TEST_SWITCHES) {
+    if (switch_count ==
+        BENCHMARK_SWITCHES) {
+
         uart_puts(
-            "[OK] benchmark two-process switching\n"
+            "[OK] benchmark complete\n"
         );
 
         research_print_summary();
