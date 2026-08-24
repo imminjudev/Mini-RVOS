@@ -25,14 +25,17 @@ USER_OBJS = \
 
 ifeq ($(BENCHMARK_MODE),1)
 USER_OBJS += $(BUILD)/user_benchmark.o
+BENCHMARK_OBJS = $(BUILD)/research.o
 else
 USER_OBJS += $(BUILD)/user_shell.o
+BENCHMARK_OBJS =
 endif
 
 OBJS = \
 	$(BUILD)/entry.o \
 	$(BUILD)/trap_entry.o \
 	$(USER_OBJS) \
+	$(BENCHMARK_OBJS) \
 	$(BUILD)/main.o \
 	$(BUILD)/uart.o \
 	$(BUILD)/memory.o \
@@ -64,6 +67,9 @@ $(BUILD)/user_shell.o: kernel/user_shell.c | $(BUILD)
 >$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_benchmark.o: kernel/user_benchmark.c | $(BUILD)
+>$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/research.o: kernel/research.c | $(BUILD)
 >$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_syscall.o: kernel/user_syscall.S | $(BUILD)

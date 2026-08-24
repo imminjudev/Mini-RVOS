@@ -1,6 +1,10 @@
 #include "../include/vm.h"
 #include "../include/riscv.h"
 
+#ifdef BENCHMARK_MODE
+#include "../include/research.h"
+#endif
+
 #define VPN_MASK 0x1FFUL
 
 #define PA_TO_PTE(pa) \
@@ -356,6 +360,13 @@ void vm_enable(
         SATP_MODE_SV39 |
         ((unsigned long)root >> 12);
 
+#ifdef BENCHMARK_MODE
+
+    unsigned long start =
+        riscv_read_time();
+
+#endif
+
     riscv_sfence_vma();
 
     riscv_write_satp(
@@ -363,4 +374,17 @@ void vm_enable(
     );
 
     riscv_sfence_vma();
+
+#ifdef BENCHMARK_MODE
+
+    unsigned long end =
+        riscv_read_time();
+
+    research_record_sfence(2);
+
+    research_record_address_space_switch(
+        end - start
+    );
+
+#endif
 }
