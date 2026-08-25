@@ -164,7 +164,11 @@ research-analyze:
 >test -n "$(DATASET)"
 >python3 scripts/analyze_experiment.py "$(DATASET)"
 
+research-plot:
+>test -n "$(DATASET)"
+>python3 scripts/plot_experiment.py "$(DATASET)"
+
 clean:
 >rm -rf build build-benchmark build-benchmark-*
 
-.PHONY: all run test benchmark run-benchmark research-smoke research-experiment research-analyze clean
+.PHONY: all run test benchmark run-benchmark research-smoke research-experiment research-analyze research-plot clean
