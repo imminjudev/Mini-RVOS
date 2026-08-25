@@ -160,7 +160,11 @@ research-smoke:
 research-experiment:
 >python3 scripts/run_experiments.py
 
+research-analyze:
+>test -n "$(DATASET)"
+>python3 scripts/analyze_experiment.py "$(DATASET)"
+
 clean:
 >rm -rf build build-benchmark build-benchmark-*
 
-.PHONY: all run test benchmark run-benchmark research-smoke research-experiment clean
+.PHONY: all run test benchmark run-benchmark research-smoke research-experiment research-analyze clean
