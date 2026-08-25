@@ -5,3 +5,6 @@ build/
 *.map
 .gdb_history
 Thumbs.db
+research-results/
+__pycache__/
+*.pyc

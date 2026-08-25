@@ -154,7 +154,13 @@ benchmark:
 run-benchmark:
 >$(MAKE) BUILD=$(BENCHMARK_BUILD) BENCHMARK_MODE=1 BENCHMARK_QUANTUM_TICKS=$(BENCHMARK_QUANTUM_TICKS) BENCHMARK_SWITCHES=$(BENCHMARK_SWITCHES) BENCHMARK_USE_ASID=$(BENCHMARK_USE_ASID) BENCHMARK_WORKLOAD=$(BENCHMARK_WORKLOAD) BENCHMARK_WORKING_SET_PAGES=$(BENCHMARK_WORKING_SET_PAGES) run
 
+research-smoke:
+>python3 scripts/run_experiments.py --allow-dirty --runs 1 --switches 20 --quanta 100000 --working-sets 1
+
+research-experiment:
+>python3 scripts/run_experiments.py
+
 clean:
 >rm -rf build build-benchmark build-benchmark-*
 
-.PHONY: all run test benchmark run-benchmark clean
+.PHONY: all run test benchmark run-benchmark research-smoke research-experiment clean
