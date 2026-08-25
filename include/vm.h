@@ -15,6 +15,8 @@ typedef pte_t *pagetable_t;
 #define PTE_A (1UL << 6)
 #define PTE_D (1UL << 7)
 
+#define VM_ASID_MAX 0xffffUL
+
 pagetable_t vm_create(void);
 
 int vm_map_page(
@@ -37,15 +39,6 @@ unsigned long vm_translate(
     unsigned long va
 );
 
-/*
- * 지정된 virtual address 범위가
- *
- * - 실제로 매핑되어 있고
- * - PTE_U가 있으며
- * - required_flags 권한을 가지고 있는지
- *
- * 검사한다.
- */
 int vm_user_range_valid(
     pagetable_t root,
     unsigned long va,
@@ -53,6 +46,17 @@ int vm_user_range_valid(
     unsigned long required_flags
 );
 
-void vm_enable(pagetable_t root);
+void vm_enable(
+    pagetable_t root
+);
+
+void vm_enable_asid(
+    pagetable_t root,
+    unsigned long asid
+);
+
+unsigned long vm_detect_asid_bits(
+    pagetable_t root
+);
 
 #endif

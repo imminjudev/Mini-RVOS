@@ -43,6 +43,20 @@ void kernel_main(
         "[BENCH] benchmark mode\n"
     );
 
+#if BENCHMARK_USE_ASID
+
+    uart_puts(
+        "[BENCH] requested switch mode=ASID\n"
+    );
+
+#else
+
+    uart_puts(
+        "[BENCH] requested switch mode=FULL_FLUSH\n"
+    );
+
+#endif
+
     if (process_create(
             &benchmark_process_1,
             1) != 0) {
@@ -66,6 +80,32 @@ void kernel_main(
         for (;;) {
         }
     }
+
+#if BENCHMARK_USE_ASID
+
+    unsigned long asid_bits =
+        vm_detect_asid_bits(
+            benchmark_process_1.pagetable
+        );
+
+    /*
+     * ASIDs 1 and 2 require at least two
+     * writable ASID bits.
+     */
+    if (asid_bits < 2) {
+        uart_puts(
+            "[FAIL] insufficient hardware ASID support\n"
+        );
+
+        for (;;) {
+        }
+    }
+
+    uart_puts(
+        "[OK] hardware ASID support detected\n"
+    );
+
+#endif
 
     if (scheduler_init(
             &benchmark_process_1,

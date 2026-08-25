@@ -3,6 +3,12 @@
 #include "../include/riscv.h"
 #include "../include/uart.h"
 
+#if BENCHMARK_USE_ASID
+#define RESEARCH_SWITCH_MODE "ASID"
+#else
+#define RESEARCH_SWITCH_MODE "FULL_FLUSH"
+#endif
+
 static unsigned long context_switch_count;
 static unsigned long sfence_count;
 
@@ -67,7 +73,9 @@ static void print_csv_row(
     );
 
     uart_puts(
-        "[CSV] FULL_FLUSH,cpu,"
+        "[CSV] "
+        RESEARCH_SWITCH_MODE
+        ",cpu,"
     );
 
     print_unsigned_long(
@@ -158,6 +166,12 @@ void research_print_summary(void)
     unsigned long elapsed_ticks =
         benchmark_end_ticks -
         benchmark_start_ticks;
+
+    uart_puts(
+        "[BENCH] switch_mode="
+        RESEARCH_SWITCH_MODE
+        "\n"
+    );
 
     print_value(
         "quantum_ticks",

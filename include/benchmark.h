@@ -11,6 +11,14 @@
 #define BENCHMARK_SWITCHES 100UL
 #endif
 
+#ifndef BENCHMARK_USE_ASID
+#define BENCHMARK_USE_ASID 0
+#endif
+
+#if BENCHMARK_USE_ASID != 0 && BENCHMARK_USE_ASID != 1
+#error "BENCHMARK_USE_ASID must be 0 or 1"
+#endif
+
 #endif
 
 #endif

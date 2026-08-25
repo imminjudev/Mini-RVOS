@@ -6,6 +6,7 @@
 
 struct process {
     unsigned long pid;
+    unsigned long asid;
 
     pagetable_t pagetable;
 

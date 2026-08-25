@@ -7,6 +7,8 @@
 
 #define VPN_MASK 0x1FFUL
 
+#define SATP_ASID_SHIFT 44UL
+
 #define PA_TO_PTE(pa) \
     (((unsigned long)(pa) >> 12) << 10)
 
@@ -387,4 +389,102 @@ void vm_enable(
     );
 
 #endif
+}
+
+
+void vm_enable_asid(
+    pagetable_t root,
+    unsigned long asid)
+{
+    unsigned long satp =
+        SATP_MODE_SV39 |
+        ((asid & VM_ASID_MAX) <<
+         SATP_ASID_SHIFT) |
+        ((unsigned long)root >> 12);
+
+#ifdef BENCHMARK_MODE
+
+    unsigned long start =
+        riscv_read_time();
+
+#endif
+
+    /*
+     * Benchmark invariant:
+     *
+     * - each process owns a unique ASID,
+     * - ASIDs are not reused,
+     * - page tables are not modified after
+     *   benchmark execution begins,
+     * - page-table writes are synchronized
+     *   before the measured run.
+     *
+     * Therefore a context switch only needs
+     * to replace satp.
+     */
+    riscv_write_satp(
+        satp
+    );
+
+#ifdef BENCHMARK_MODE
+
+    unsigned long end =
+        riscv_read_time();
+
+    research_record_address_space_switch(
+        end - start
+    );
+
+#endif
+}
+
+
+unsigned long vm_detect_asid_bits(
+    pagetable_t root)
+{
+    unsigned long original_satp =
+        riscv_read_satp();
+
+    unsigned long probe_satp =
+        SATP_MODE_SV39 |
+        (VM_ASID_MAX <<
+         SATP_ASID_SHIFT) |
+        ((unsigned long)root >> 12);
+
+    /*
+     * Synchronize all page-table stores before
+     * temporarily enabling the probe address space.
+     */
+    riscv_sfence_vma();
+
+    riscv_write_satp(
+        probe_satp
+    );
+
+    unsigned long readback =
+        riscv_read_satp();
+
+    riscv_write_satp(
+        original_satp
+    );
+
+    /*
+     * Remove translations created by the probe and
+     * leave a clean translation state before the run.
+     */
+    riscv_sfence_vma();
+
+    unsigned long mask =
+        (readback >>
+         SATP_ASID_SHIFT) &
+        VM_ASID_MAX;
+
+    unsigned long bits = 0;
+
+    while (mask & 1UL) {
+        bits++;
+        mask >>= 1;
+    }
+
+    return bits;
 }

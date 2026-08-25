@@ -2,6 +2,10 @@
 #include "../include/memory.h"
 #include "../include/riscv.h"
 
+#ifdef BENCHMARK_MODE
+#include "../include/benchmark.h"
+#endif
+
 #define RAM_END          0x88000000UL
 #define UART0            0x10000000UL
 
@@ -177,11 +181,24 @@ int process_create(
     unsigned long pid)
 {
     process->pid = pid;
+    process->asid = pid;
     process->pagetable = 0;
     process->kernel_stack = 0;
     process->user_stack = 0;
     process->frame = 0;
     process->syscall_complete = 0;
+
+#ifdef BENCHMARK_MODE
+#if BENCHMARK_USE_ASID
+
+    if (process->asid == 0 ||
+        process->asid > VM_ASID_MAX) {
+
+        return -1;
+    }
+
+#endif
+#endif
 
     pagetable_t root = vm_create();
 
@@ -262,7 +279,28 @@ void process_activate(
 {
     current_process = process;
 
-    vm_enable(process->pagetable);
+#ifdef BENCHMARK_MODE
+#if BENCHMARK_USE_ASID
+
+    vm_enable_asid(
+        process->pagetable,
+        process->asid
+    );
+
+#else
+
+    vm_enable(
+        process->pagetable
+    );
+
+#endif
+#else
+
+    vm_enable(
+        process->pagetable
+    );
+
+#endif
 }
 
 void process_start(
