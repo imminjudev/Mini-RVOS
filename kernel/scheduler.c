@@ -106,7 +106,10 @@ struct trap_frame *scheduler_on_timer(
             "[OK] benchmark complete\n"
         );
 
-        research_print_summary();
+        research_print_summary(
+            processes[0]->frame->s11,
+            processes[1]->frame->s11
+        );
 
         riscv_disable_timer_interrupt();
     }

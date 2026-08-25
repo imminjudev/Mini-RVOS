@@ -11,8 +11,10 @@
 
 #if BENCHMARK_WORKLOAD_MEMORY
 #define RESEARCH_WORKLOAD "memory"
+#define RESEARCH_WORK_UNIT "sweep"
 #else
 #define RESEARCH_WORKLOAD "cpu"
+#define RESEARCH_WORK_UNIT "iteration"
 #endif
 
 static unsigned long context_switch_count;
@@ -68,15 +70,22 @@ static void print_value(
 }
 
 static void print_csv_row(
-    unsigned long elapsed_ticks)
+    unsigned long elapsed_ticks,
+    unsigned long process_1_work_units,
+    unsigned long process_2_work_units)
 {
+    unsigned long total_work_units =
+        process_1_work_units +
+        process_2_work_units;
+
     uart_puts(
         "[CSV_HEADER] "
         "mode,workload,working_set_pages,"
         "quantum_ticks,target_switches,"
         "elapsed_ticks,context_switches,sfence_count,"
         "address_space_switch_ticks_total,"
-        "address_space_switch_ticks_max\n"
+        "address_space_switch_ticks_max,"
+        "p1_work_units,p2_work_units,total_work_units\n"
     );
 
     uart_puts(
@@ -133,6 +142,24 @@ static void print_csv_row(
         address_space_switch_ticks_max
     );
 
+    uart_putc(',');
+
+    print_unsigned_long(
+        process_1_work_units
+    );
+
+    uart_putc(',');
+
+    print_unsigned_long(
+        process_2_work_units
+    );
+
+    uart_putc(',');
+
+    print_unsigned_long(
+        total_work_units
+    );
+
     uart_putc('\n');
 }
 
@@ -173,7 +200,9 @@ void research_record_address_space_switch(
     }
 }
 
-void research_print_summary(void)
+void research_print_summary(
+    unsigned long process_1_work_units,
+    unsigned long process_2_work_units)
 {
     unsigned long benchmark_end_ticks =
         riscv_read_time();
@@ -181,6 +210,10 @@ void research_print_summary(void)
     unsigned long elapsed_ticks =
         benchmark_end_ticks -
         benchmark_start_ticks;
+
+    unsigned long total_work_units =
+        process_1_work_units +
+        process_2_work_units;
 
     uart_puts(
         "[BENCH] switch_mode="
@@ -191,6 +224,12 @@ void research_print_summary(void)
     uart_puts(
         "[BENCH] workload="
         RESEARCH_WORKLOAD
+        "\n"
+    );
+
+    uart_puts(
+        "[BENCH] work_unit="
+        RESEARCH_WORK_UNIT
         "\n"
     );
 
@@ -234,7 +273,24 @@ void research_print_summary(void)
         address_space_switch_ticks_max
     );
 
+    print_value(
+        "p1_work_units",
+        process_1_work_units
+    );
+
+    print_value(
+        "p2_work_units",
+        process_2_work_units
+    );
+
+    print_value(
+        "total_work_units",
+        total_work_units
+    );
+
     print_csv_row(
-        elapsed_ticks
+        elapsed_ticks,
+        process_1_work_units,
+        process_2_work_units
     );
 }

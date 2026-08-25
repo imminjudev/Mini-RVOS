@@ -23,11 +23,24 @@
 #define BENCHMARK_WORKING_SET_PAGES 1UL
 #endif
 
+#ifdef __ASSEMBLER__
+#define BENCHMARK_PAGE_SIZE 4096
+#define BENCHMARK_WORKING_SET_BASE 0x41000000
+#else
 #define BENCHMARK_PAGE_SIZE 4096UL
 #define BENCHMARK_WORKING_SET_BASE 0x41000000UL
+#endif
 
 #if BENCHMARK_USE_ASID != 0 && BENCHMARK_USE_ASID != 1
 #error "BENCHMARK_USE_ASID must be 0 or 1"
+#endif
+
+#if BENCHMARK_SWITCHES < 2
+#error "BENCHMARK_SWITCHES must be at least 2"
+#endif
+
+#if (BENCHMARK_SWITCHES % 2) != 0
+#error "BENCHMARK_SWITCHES must be even for two-process benchmark fairness"
 #endif
 
 #if BENCHMARK_WORKLOAD_MEMORY != 0 && BENCHMARK_WORKLOAD_MEMORY != 1

@@ -45,7 +45,7 @@ CFLAGS += -DBENCHMARK_QUANTUM_TICKS=$(BENCHMARK_QUANTUM_TICKS)UL
 CFLAGS += -DBENCHMARK_SWITCHES=$(BENCHMARK_SWITCHES)UL
 CFLAGS += -DBENCHMARK_USE_ASID=$(BENCHMARK_USE_ASID)
 CFLAGS += -DBENCHMARK_WORKLOAD_MEMORY=$(BENCHMARK_WORKLOAD_ID)
-CFLAGS += -DBENCHMARK_WORKING_SET_PAGES=$(BENCHMARK_WORKING_SET_PAGES)UL
+CFLAGS += -DBENCHMARK_WORKING_SET_PAGES=$(BENCHMARK_WORKING_SET_PAGES)
 endif
 
 USER_OBJS = \
@@ -95,7 +95,7 @@ $(BUILD)/user_entry.o: kernel/user_entry.S | $(BUILD)
 $(BUILD)/user_shell.o: kernel/user_shell.c | $(BUILD)
 >$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/user_benchmark.o: kernel/user_benchmark.c | $(BUILD)
+$(BUILD)/user_benchmark.o: kernel/user_benchmark.S | $(BUILD)
 >$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/research.o: kernel/research.c | $(BUILD)
