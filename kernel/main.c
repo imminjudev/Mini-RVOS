@@ -7,7 +7,6 @@
 
 #ifdef BENCHMARK_MODE
 #include "../include/scheduler.h"
-#include "../include/sbi.h"
 #include "../include/benchmark.h"
 #endif
 
@@ -172,13 +171,16 @@ void kernel_main(
 
     trap_init();
 
-    sbi_set_timer(
-        riscv_read_time() +
-        BENCHMARK_QUANTUM_TICKS
-    );
-
+    /*
+     * Keep supervisor interrupts globally disabled while
+     * benchmark kernel code is executing.
+     *
+     * Supervisor timer interrupts remain deliverable after
+     * SRET enters U-mode because SIE does not gate
+     * supervisor interrupts at a lower privilege level.
+     */
+    riscv_disable_interrupts();
     riscv_enable_timer_interrupt();
-    riscv_enable_interrupts();
 
     uart_puts(
         "[OK] entering benchmark scheduler\n"

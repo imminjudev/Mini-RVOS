@@ -5,6 +5,7 @@
 #ifdef BENCHMARK_MODE
 #include "../include/research.h"
 #include "../include/benchmark.h"
+#include "../include/sbi.h"
 #endif
 
 void uart_puts(const char *s);
@@ -47,6 +48,16 @@ void scheduler_start(void)
      */
     process_activate(processes[0]);
 
+    /*
+     * Arm the first timer only after the initial address
+     * space has been activated. SIE remains clear while
+     * this S-mode setup code executes.
+     */
+    sbi_set_timer(
+        riscv_read_time() +
+        BENCHMARK_QUANTUM_TICKS
+    );
+
     research_reset();
 
     trap_resume(
@@ -63,6 +74,31 @@ void scheduler_start(void)
 struct trap_frame *scheduler_on_timer(
     struct trap_frame *frame)
 {
+    /*
+     * This scheduler owns U-mode process preemption.
+     * A timer interrupt that originated in S-mode must
+     * never replace a process trap frame.
+     */
+    if (frame->sstatus & SSTATUS_SPP) {
+
+#ifdef BENCHMARK_MODE
+
+        uart_puts(
+            "[FAIL] benchmark timer interrupted S-mode\n"
+        );
+
+        riscv_disable_timer_interrupt();
+
+        for (;;) {
+        }
+
+#else
+
+        return frame;
+
+#endif
+    }
+
     if (current_index < 0 ||
         current_index >= PROCESS_COUNT) {
         return frame;

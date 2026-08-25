@@ -85,6 +85,16 @@ static inline void riscv_enable_interrupts(void)
     );
 }
 
+static inline void riscv_disable_interrupts(void)
+{
+    __asm__ volatile(
+        "csrc sstatus, %0"
+        ::
+        "r"(SSTATUS_SIE)
+        : "memory"
+    );
+}
+
 static inline void riscv_enable_timer_interrupt(void)
 {
     __asm__ volatile(
