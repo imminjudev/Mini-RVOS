@@ -9,6 +9,12 @@
 #define RESEARCH_SWITCH_MODE "FULL_FLUSH"
 #endif
 
+#if BENCHMARK_WORKLOAD_MEMORY
+#define RESEARCH_WORKLOAD "memory"
+#else
+#define RESEARCH_WORKLOAD "cpu"
+#endif
+
 static unsigned long context_switch_count;
 static unsigned long sfence_count;
 
@@ -66,7 +72,8 @@ static void print_csv_row(
 {
     uart_puts(
         "[CSV_HEADER] "
-        "mode,workload,quantum_ticks,target_switches,"
+        "mode,workload,working_set_pages,"
+        "quantum_ticks,target_switches,"
         "elapsed_ticks,context_switches,sfence_count,"
         "address_space_switch_ticks_total,"
         "address_space_switch_ticks_max\n"
@@ -75,8 +82,16 @@ static void print_csv_row(
     uart_puts(
         "[CSV] "
         RESEARCH_SWITCH_MODE
-        ",cpu,"
+        ","
+        RESEARCH_WORKLOAD
+        ","
     );
+
+    print_unsigned_long(
+        BENCHMARK_REPORTED_WORKING_SET_PAGES
+    );
+
+    uart_putc(',');
 
     print_unsigned_long(
         BENCHMARK_QUANTUM_TICKS
@@ -171,6 +186,17 @@ void research_print_summary(void)
         "[BENCH] switch_mode="
         RESEARCH_SWITCH_MODE
         "\n"
+    );
+
+    uart_puts(
+        "[BENCH] workload="
+        RESEARCH_WORKLOAD
+        "\n"
+    );
+
+    print_value(
+        "working_set_pages",
+        BENCHMARK_REPORTED_WORKING_SET_PAGES
     );
 
     print_value(

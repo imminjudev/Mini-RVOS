@@ -127,6 +127,47 @@ static int copy_user_region(
     return 0;
 }
 
+#ifdef BENCHMARK_MODE
+#if BENCHMARK_WORKLOAD_MEMORY
+
+static int map_benchmark_working_set(
+    pagetable_t root)
+{
+    for (unsigned long page_index = 0;
+         page_index < BENCHMARK_WORKING_SET_PAGES;
+         page_index++) {
+
+        void *page =
+            page_alloc();
+
+        if (page == 0) {
+            return -1;
+        }
+
+        page_zero(page);
+
+        unsigned long va =
+            BENCHMARK_WORKING_SET_BASE +
+            page_index * PAGE_SIZE;
+
+        if (vm_map_page(
+                root,
+                va,
+                (unsigned long)page,
+                PTE_R | PTE_W |
+                PTE_U | PTE_A | PTE_D) != 0) {
+
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+#endif
+#endif
+
+
 static int map_kernel(
     pagetable_t root)
 {
@@ -227,6 +268,18 @@ int process_create(
             PTE_A) != 0) {
         return -1;
     }
+
+#ifdef BENCHMARK_MODE
+#if BENCHMARK_WORKLOAD_MEMORY
+
+    if (map_benchmark_working_set(
+            root) != 0) {
+
+        return -1;
+    }
+
+#endif
+#endif
 
     void *user_stack = page_alloc();
     void *kernel_stack = page_alloc();

@@ -57,6 +57,20 @@ void kernel_main(
 
 #endif
 
+#if BENCHMARK_WORKLOAD_MEMORY
+
+    uart_puts(
+        "[BENCH] requested workload=memory\n"
+    );
+
+#else
+
+    uart_puts(
+        "[BENCH] requested workload=cpu\n"
+    );
+
+#endif
+
     if (process_create(
             &benchmark_process_1,
             1) != 0) {
@@ -80,6 +94,39 @@ void kernel_main(
         for (;;) {
         }
     }
+
+#if BENCHMARK_WORKLOAD_MEMORY
+
+    unsigned long process_1_working_set =
+        vm_translate(
+            benchmark_process_1.pagetable,
+            BENCHMARK_WORKING_SET_BASE
+        );
+
+    unsigned long process_2_working_set =
+        vm_translate(
+            benchmark_process_2.pagetable,
+            BENCHMARK_WORKING_SET_BASE
+        );
+
+    if (process_1_working_set == 0 ||
+        process_2_working_set == 0 ||
+        process_1_working_set ==
+        process_2_working_set) {
+
+        uart_puts(
+            "[FAIL] benchmark working-set isolation\n"
+        );
+
+        for (;;) {
+        }
+    }
+
+    uart_puts(
+        "[OK] benchmark working sets private\n"
+    );
+
+#endif
 
 #if BENCHMARK_USE_ASID
 
