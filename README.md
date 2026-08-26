@@ -348,6 +348,134 @@ Successful result:
 [OK] Mini-RVOS smoke test passed
 ~~~
 
+## ASID Context-Switch Research
+
+Mini-RVOS includes a reproducible experiment for evaluating
+ASID-based Sv39 address-space switching.
+
+Research question:
+
+~~~text
+How does ASID-based Sv39 address-space switching affect
+preemptive scheduling overhead in Mini-RVOS across different
+timer quanta and memory working-set sizes?
+~~~
+
+The experiment compares:
+
+~~~text
+FULL_FLUSH
+    ASID 0
+    global SFENCE.VMA operations during address-space activation
+
+ASID
+    fixed per-process ASIDs
+    no measured per-switch global SFENCE.VMA
+~~~
+
+The final experiment used:
+
+~~~text
+2 switching policies
+3 timer quanta
+4 memory working-set sizes
+20 runs per condition
+
+24 conditions
+480 total runs
+100 measured context switches per run
+~~~
+
+Tested timer quanta:
+
+~~~text
+10,000 ticks
+100,000 ticks
+1,000,000 ticks
+~~~
+
+Tested private memory working sets:
+
+~~~text
+1 page    =   4 KiB
+8 pages   =  32 KiB
+32 pages  = 128 KiB
+128 pages = 512 KiB
+~~~
+
+### Research Results
+
+Across the final 480-run memory-workload experiment:
+
+- `FULL_FLUSH` recorded 200 measured global `SFENCE.VMA` operations
+  for every 100-switch run.
+- `ASID` recorded zero measured per-switch global `SFENCE.VMA`
+  operations.
+- ASID reduced mean measured address-space switch latency in all
+  12 matched quantum/working-set comparisons.
+- The cellwise switch-cost reduction ranged from **14.24% to 46.09%**.
+- The unweighted mean cellwise switch-cost reduction was approximately
+  **29.68%**.
+- All bootstrap 95% confidence intervals for end-to-end throughput
+  change included zero.
+
+The experiment therefore found a consistent reduction in the measured
+address-space switching-path cost, while it did not establish a
+corresponding end-to-end user-throughput improvement under the tested
+QEMU environment.
+
+The study does not directly measure TLB miss counts.
+
+### Research Figures
+
+#### ASID Throughput Change
+
+![ASID throughput change](docs/assets/asid-research/01-throughput-change.svg)
+
+#### Address-Space Switch Cost
+
+![Measured address-space switch cost](docs/assets/asid-research/02-switch-cost.svg)
+
+#### Switching Share of Benchmark Time
+
+![Address-space switching share](docs/assets/asid-research/03-switch-time-share.svg)
+
+### Technical Report
+
+The complete methodology, benchmark validation, results, discussion,
+limitations, and hypothesis evaluation are documented in:
+
+~~~text
+docs/08-asid-research-report.md
+~~~
+
+### Reproducing the Research Pipeline
+
+Run the benchmark matrix:
+
+~~~bash
+make research-experiment
+~~~
+
+Analyze an accepted dataset:
+
+~~~bash
+make research-analyze DATASET=research-results/<dataset>
+~~~
+
+Generate figures:
+
+~~~bash
+make research-plot DATASET=research-results/<dataset>
+~~~
+
+The benchmark runner records Git revision, QEMU/compiler versions,
+experiment parameters, random seed, and raw per-run measurements.
+
+Generated raw research results under `research-results/` are excluded
+from normal Git tracking. The report contains frozen SVG figures from
+the accepted final dataset.
+
 ## Development Milestones
 
 ~~~text
